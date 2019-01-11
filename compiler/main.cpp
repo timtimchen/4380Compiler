@@ -7,9 +7,18 @@
 //
 
 #include <iostream>
+#include "Compiler.hpp"
+
+using namespace std;
 
 int main(int argc, const char * argv[]) {
-    // insert code here...
-    std::cout << "Hello, World!\n";
+    if (argc < 2) {
+        cout << "Please input the KXI source file name in the command line." << endl;
+    }
+    else {
+        Compiler newCompiler;
+        cout << newCompiler.lexicalAnalysis(argv[1]) << endl;
+    }
+    
     return 0;
 }
