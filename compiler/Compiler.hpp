@@ -18,14 +18,26 @@
 #define DEBUGMODE true
 
 enum TokenType {
-    NUMBER,
-    CHARACTER,
-    IDENTIFIER,
-    PUNCTUATION,
-    KEYWORDS,
-    SYMBOLS,
-    UNKNOWN,
-    EoF
+    T_Number,
+    T_Character,
+    T_Identifier,
+    T_Punctuation,
+    T_Keywords,
+    T_Symbols,
+    T_Unknown,
+    T_EOF
+};
+
+enum CharGroup {
+    C_Whitespace,
+    C_Number,
+    C_Letter,
+    C_Apostrophe,
+    C_Backslash,
+    C_Slash,
+    C_Symbol,
+    C_Punctuation,
+    C_UnGroup
 };
 
 struct Token {
@@ -36,10 +48,16 @@ struct Token {
 
 class Compiler {
 private:
+    Token currentToken, nextToken;
+    bool nextTokenReady, newCurrentTokenReady;
     std::map<std::string, int> keywordTable;
 
 public:
     Compiler() {
+        currentToken = { T_EOF, 0, "" };
+        nextToken = { T_EOF, 0, "" };
+        nextTokenReady = false;
+        newCurrentTokenReady = false;
         keywordTable.insert(std::pair<std::string, int>("atoi",0));
         keywordTable.insert(std::pair<std::string, int>("and",0));
         keywordTable.insert(std::pair<std::string, int>("bool",0));
@@ -83,13 +101,70 @@ public:
         keywordTable.insert(std::pair<std::string, int>("wait",0));
     }
     
+    bool fetchNextToken(int lineIndex, int & charIndex, const std::string & lineBuffer, bool & endFlag) {
+        if (nextTokenReady) {
+            currentToken = nextToken;
+            newCurrentTokenReady = true;
+        } else {
+            newCurrentTokenReady = false;
+        }
+        nextToken = { T_Unknown, lineIndex, lineBuffer };
+        nextTokenReady = true;
+        endFlag = true;
+        return true;
+    }
+    
+    void printCurrentToken() {
+        if (newCurrentTokenReady) {
+            std::cout << currentToken.lineNumber << " : \t" << tokenName(currentToken.type) << currentToken.lexeme << std::endl;
+        }
+    }
+    
+    std::string tokenName(TokenType type) {
+        switch (type) {
+            case T_Number:
+                return "NUMBER         ";
+            case T_Character:
+                return "CHARACTER      ";
+            case T_Identifier:
+                return "Identifier     ";
+            case T_Punctuation:
+                return "PUNCTUATION    ";
+            case T_Keywords:
+                return "KEYWORDS       ";
+            case T_Symbols:
+                return "SYMBOLS        ";
+            case T_Unknown:
+                return "UNKNOWN        ";
+            case T_EOF:
+                return "EOF            ";
+            default:
+                return "";
+        }
+    }
+    
     bool lexicalAnalysis(std::string fileName) {
         std::ifstream inputFile(fileName);
         if (inputFile) {
-            std::string line;
+            std::string lineBuffer;
             int lineCounter = 0;
-            while (std::getline(inputFile, line)) {
+            if (DEBUGMODE) {
+                std::cout << "Lexical Analysis: \n";
+            }
+            while (std::getline(inputFile, lineBuffer)) {
                 lineCounter++;
+                int charCounter = 0;
+                bool endOfLine = false;
+                while (!endOfLine) {
+                    fetchNextToken(lineCounter, charCounter, lineBuffer, endOfLine);
+                    if (DEBUGMODE) {
+                        printCurrentToken();
+                    }
+                }
+            }
+            nextToken = { T_EOF, lineCounter + 1, "" };
+            if (DEBUGMODE) {
+                std::cout << nextToken.lineNumber << " : \t" << tokenName(nextToken.type) << nextToken.lexeme << std::endl;
             }
             return true;
         } else {
@@ -97,7 +172,7 @@ public:
             return false;
         }
     }
-        
+    
 };
 
 #endif /* Compiler_h */

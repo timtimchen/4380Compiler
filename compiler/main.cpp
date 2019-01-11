@@ -17,7 +17,7 @@ int main(int argc, const char * argv[]) {
     }
     else {
         Compiler newCompiler;
-        cout << newCompiler.lexicalAnalysis(argv[1]) << endl;
+        newCompiler.lexicalAnalysis(argv[1]);
     }
     
     return 0;
