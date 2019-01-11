@@ -101,6 +101,11 @@ public:
         keywordTable.insert(std::pair<std::string, int>("wait",0));
     }
     
+    CharGroup parseChar(char ch) {
+        if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\v' || ch == '\f') return C_Whitespace;
+        return C_UnGroup;
+    }
+    
     bool fetchNextToken(int lineIndex, int & charIndex, const std::string & lineBuffer, bool & endFlag) {
         if (nextTokenReady) {
             currentToken = nextToken;
@@ -108,10 +113,23 @@ public:
         } else {
             newCurrentTokenReady = false;
         }
-        nextToken = { T_Unknown, lineIndex, lineBuffer };
-        nextTokenReady = true;
-        endFlag = true;
-        return true;
+        
+        if (charIndex < lineBuffer.size()) {
+            if (parseChar(lineBuffer[charIndex]) == C_Whitespace) {
+                charIndex++;
+                nextTokenReady = false;
+                return false;
+            } else {
+                nextToken = { T_Unknown, lineIndex, lineBuffer.substr(charIndex) };
+                nextTokenReady = true;
+                endFlag = true;
+                return true;
+            }
+        } else {
+            nextTokenReady = false;
+            endFlag = true;
+            return false;
+        }
     }
     
     void printCurrentToken() {
@@ -162,8 +180,15 @@ public:
                     }
                 }
             }
+            if (nextTokenReady) {
+                currentToken = nextToken;
+                newCurrentTokenReady = true;
+            } else {
+                newCurrentTokenReady = false;
+            }
             nextToken = { T_EOF, lineCounter + 1, "" };
             if (DEBUGMODE) {
+                printCurrentToken();
                 std::cout << nextToken.lineNumber << " : \t" << tokenName(nextToken.type) << nextToken.lexeme << std::endl;
             }
             return true;
