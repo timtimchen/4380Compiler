@@ -51,6 +51,7 @@ private:
     Token currentToken, nextToken;
     bool nextTokenReady, newCurrentTokenReady;
     std::map<std::string, int> keywordTable;
+    std::map<std::string, int> twoCharSymbols;
 
 public:
     Compiler() {
@@ -99,10 +100,41 @@ public:
         keywordTable.insert(std::pair<std::string, int>("void",0));
         keywordTable.insert(std::pair<std::string, int>("while",0));
         keywordTable.insert(std::pair<std::string, int>("wait",0));
+        
+        twoCharSymbols.insert(std::pair<std::string, int>("<<",0));
+        twoCharSymbols.insert(std::pair<std::string, int>(">>",0));
+        twoCharSymbols.insert(std::pair<std::string, int>("&&",0));
+        twoCharSymbols.insert(std::pair<std::string, int>("||",0));
+        twoCharSymbols.insert(std::pair<std::string, int>("==",0));
+        twoCharSymbols.insert(std::pair<std::string, int>("!=",0));
+        twoCharSymbols.insert(std::pair<std::string, int>("<=",0));
+        twoCharSymbols.insert(std::pair<std::string, int>(">=",0));
     }
     
     CharGroup parseChar(char ch) {
         if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\v' || ch == '\f') return C_Whitespace;
+        if (ch >= '0' && ch <= '9') return C_Number;
+        if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) return C_Letter;
+        if (ch == '\'') return C_Apostrophe;
+        if (ch == '\\') return C_Backslash;
+        if (ch == '/') return C_Slash;
+        if (ch == '='
+            || ch == '+'
+            || ch == '-'
+            || ch == '*'
+            || ch == '('
+            || ch == ')'
+            || ch == '<'
+            || ch == '>'
+            || ch == '['
+            || ch == ']'
+            || ch == '{'
+            || ch == '}'
+            || ch == '!'
+            || ch == '|'
+            || ch == '&')
+            return C_Symbol;
+        if (ch == '.' || ch == ',' || ch == ';' || ch == ':') return C_Punctuation;
         return C_UnGroup;
     }
     
@@ -120,9 +152,97 @@ public:
                 nextTokenReady = false;
                 return false;
             } else {
-                nextToken = { T_Unknown, lineIndex, lineBuffer.substr(charIndex) };
-                nextTokenReady = true;
-                endFlag = true;
+                std::string tempStr = "";
+                switch (parseChar(lineBuffer[charIndex])) {
+                    case C_Number:
+                        while (charIndex < lineBuffer.size() && parseChar(lineBuffer[charIndex]) == C_Number) {
+                            tempStr += lineBuffer[charIndex];
+                            charIndex++;
+                        }
+                        nextToken = { T_Number, lineIndex, tempStr};
+                        nextTokenReady = true;
+                        break;
+                    case C_Letter:
+                        while (charIndex < lineBuffer.size()
+                               && (parseChar(lineBuffer[charIndex]) == C_Number
+                               || parseChar(lineBuffer[charIndex]) == C_Letter)) {
+                            tempStr += lineBuffer[charIndex];
+                            charIndex++;
+                        }
+                        if (keywordTable.find(tempStr) == keywordTable.end()) {
+                            nextToken = { T_Identifier, lineIndex, tempStr};
+                        }
+                        else {
+                            nextToken = { T_Keywords, lineIndex, tempStr};
+                        }
+                        nextTokenReady = true;
+                        break;
+                    case C_Apostrophe:
+                        tempStr += '\'';
+                        charIndex++;
+                        if (charIndex < lineBuffer.size()
+                            && parseChar(lineBuffer[charIndex]) == C_Backslash
+                            && charIndex + 2 < lineBuffer.size()
+                            && parseChar(lineBuffer[charIndex + 2]) == C_Apostrophe) {
+                            for (int i = 0; i < 3; i++) {
+                                tempStr += lineBuffer[charIndex];
+                                charIndex++;
+                            }
+                            nextToken = { T_Character, lineIndex, tempStr};
+                        }
+                        else if (charIndex < lineBuffer.size()
+                            && parseChar(lineBuffer[charIndex]) != C_Apostrophe
+                            && parseChar(lineBuffer[charIndex]) != C_Backslash
+                            && charIndex + 1 < lineBuffer.size()
+                            && parseChar(lineBuffer[charIndex + 1]) == C_Apostrophe) {
+                            for (int i = 0; i < 2; i++) {
+                                tempStr += lineBuffer[charIndex];
+                                charIndex++;
+                            }
+                            nextToken = { T_Character, lineIndex, tempStr};
+                        }
+                        else {
+                            nextToken = { T_Unknown, lineIndex, tempStr};
+                        }
+                        nextTokenReady = true;
+                        break;
+                    case C_Symbol:
+                        tempStr += lineBuffer[charIndex];
+                        charIndex++;
+                        if (charIndex < lineBuffer.size()
+                            && parseChar(lineBuffer[charIndex]) == C_Symbol
+                            && twoCharSymbols.find(tempStr + lineBuffer[charIndex]) != twoCharSymbols.end()) {
+                            tempStr += lineBuffer[charIndex];
+                            charIndex++;
+                        }
+                        nextToken = { T_Symbols, lineIndex, tempStr};
+                        nextTokenReady = true;
+                        break;
+                    case C_Punctuation:
+                        tempStr += lineBuffer[charIndex];
+                        charIndex++;
+                        nextToken = { T_Punctuation, lineIndex, tempStr};
+                        nextTokenReady = true;
+                        break;
+                    case C_Slash:
+                        if (charIndex + 1 < lineBuffer.size() && parseChar(lineBuffer[charIndex + 1]) == C_Slash) {
+                            nextTokenReady = false;
+                            endFlag = true;
+                        }
+                        else {
+                            tempStr += lineBuffer[charIndex];
+                            charIndex++;
+                            nextToken = { T_Symbols, lineIndex, tempStr};
+                            nextTokenReady = true;
+                        }
+                        break;
+                    default:
+                        tempStr += lineBuffer[charIndex];
+                        charIndex++;
+                        nextToken = { T_Unknown, lineIndex, tempStr};
+                        nextTokenReady = true;
+                        break;
+                }
                 return true;
             }
         } else {
@@ -145,7 +265,7 @@ public:
             case T_Character:
                 return "CHARACTER      ";
             case T_Identifier:
-                return "Identifier     ";
+                return "IDENTIFIER     ";
             case T_Punctuation:
                 return "PUNCTUATION    ";
             case T_Keywords:
