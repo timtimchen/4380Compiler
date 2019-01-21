@@ -16,8 +16,8 @@ int main(int argc, const char * argv[]) {
         cout << "Please input the KXI source file name in the command line." << endl;
     }
     else {
-        Compiler newCompiler;
-        newCompiler.lexicalAnalysis(argv[1]);
+        Compiler newCompiler = Compiler(argv[1]);
+        newCompiler.run();
     }
     
     return 0;

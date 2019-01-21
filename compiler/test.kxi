@@ -1,7 +1,7 @@
 
-'\\'4647'4'ryerhth325664
+"whileif(a<b,-10.x7z+AbC{10/-11if}
 
-==="whileif(a<b,-10.x7z+AbC{10/-11if}
+!==='\\'4647a'4'ryerhth325664
 
 //
 //  main.cpp
@@ -28,5 +28,20 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 
-   
+using System;
+
+namespace DateProblem.Tests
+{
+    public class DateTimeToHumanReadableFormFormatter
+    {
+        public string Format(DateTime date, DateTime current)
+        {
+            var formatter = new DateTimeToHumanReadableFormFormatter();
+            var val = formatter.Format(DateTime.Now.AddDays(-1), DateTime.Now);
+			return val.ToString();
+        }
+    }
+	
+	
+}
 
