@@ -336,6 +336,46 @@ public:
         }
     }
     
+    void case_label(Scanner & scanner) {
+        if (scanner.getToken().lexeme == "case") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "case");
+        }
+        if (scanner.getToken().type == T_Character || isNumericLiteral(scanner.getToken(),scanner.peekToken())) {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "literal");
+        }
+        if (scanner.getToken().lexeme == ":") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), ":");
+        }
+        statement(scanner);
+    }
+    
+    void case_block(Scanner & scanner) {
+        if (scanner.getToken().lexeme == "{") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "{");
+        }
+        while (scanner.getToken().lexeme == "case") {
+            case_label(scanner);
+        }
+        if (scanner.getToken().lexeme == "}") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "}");
+        }
+    }
+    
     void statement(Scanner & scanner) {
         if (scanner.getToken().lexeme == "{") {
             scanner.fetchTokens();
@@ -363,6 +403,93 @@ public:
             if (scanner.getToken().lexeme == "else") {
                 scanner.fetchTokens();
                 statement(scanner);
+            }
+        }
+        else if (scanner.getToken().lexeme == "while") {
+            scanner.fetchTokens();
+            if (scanner.getToken().lexeme == "(") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), "(");
+            }
+            expression(scanner);
+            if (scanner.getToken().lexeme == ")") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ")");
+            }
+            statement(scanner);
+        }
+        else if (scanner.getToken().lexeme == "return") {
+            scanner.fetchTokens();
+            if (scanner.getToken().lexeme != ";") {
+                expression(scanner);
+            }
+            if (scanner.getToken().lexeme == ";") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ";");
+            }
+        }
+        else if (scanner.getToken().lexeme == "cout") {
+            scanner.fetchTokens();
+            if (scanner.getToken().lexeme == "<<") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), "<<");
+            }
+            expression(scanner);
+            if (scanner.getToken().lexeme == ";") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ";");
+            }
+        }
+        else if (scanner.getToken().lexeme == "cin") {
+            scanner.fetchTokens();
+            if (scanner.getToken().lexeme == ">>") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ">>");
+            }
+            expression(scanner);
+            if (scanner.getToken().lexeme == ";") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ";");
+            }
+        }
+        else if (scanner.getToken().lexeme == "switch") {
+            scanner.fetchTokens();
+            if (scanner.getToken().lexeme == "(") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), "(");
+            }
+            expression(scanner);
+            if (scanner.getToken().lexeme == ")") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ")");
+            }
+            case_block(scanner);
+        }
+        else if (scanner.getToken().lexeme == "break") {
+            scanner.fetchTokens();
+            if (scanner.getToken().lexeme == ";") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ";");
             }
         }
         else {
