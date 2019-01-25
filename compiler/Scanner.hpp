@@ -113,8 +113,8 @@ public:
         keywordTable.insert(std::pair<std::string, int>("while",0));
         keywordTable.insert(std::pair<std::string, int>("wait",0));
         
-        twoCharSymbols.insert(std::pair<std::string, int>("<<",0));
-        twoCharSymbols.insert(std::pair<std::string, int>(">>",0));
+        twoCharSymbols.insert(std::pair<std::string, int>("<<",1));
+        twoCharSymbols.insert(std::pair<std::string, int>(">>",1));
         twoCharSymbols.insert(std::pair<std::string, int>("&&",0));
         twoCharSymbols.insert(std::pair<std::string, int>("||",0));
         twoCharSymbols.insert(std::pair<std::string, int>("==",0));
@@ -163,14 +163,17 @@ public:
                 if (std::getline(inputFile, lineBuffer)) {
                     charIndex = 0;
                     endLineFlag = false;
-                } else {
+                }
+                else {
                     nextToken = { T_EOF, lineIndex, "EOF" };
                     return;
                 }
-            } else {
+            }
+            else {
                 if (parseChar(lineBuffer[charIndex]) == C_Whitespace) {
                     charIndex++;
-                } else {
+                }
+                else {
                     std::string tempStr = "";
                     switch (parseChar(lineBuffer[charIndex])) {
                         case C_Number:
@@ -229,7 +232,8 @@ public:
                             && lineBuffer[charIndex] == '=') {
                             charIndex++;
                             nextToken = { T_Symbols, lineIndex, "!="};
-                        } else {
+                        }
+                        else {
                             nextToken = { T_Unknown, lineIndex, "!"};
                         }
                         return;
