@@ -59,8 +59,10 @@ public:
     
     void numeric_literal(Scanner& scanner) {
         if (scanner.getToken().lexeme == "+" || scanner.getToken().lexeme == "-") {
+            //todo: integer literal
             scanner.fetchTokens();
             if (scanner.getToken().type == T_Number) {
+                //todo
                 scanner.fetchTokens();
             }
             else {
@@ -68,6 +70,7 @@ public:
             }
         }
         else if (scanner.getToken().type == T_Number) {
+            // todo
             scanner.fetchTokens();
         }
         else {
@@ -314,6 +317,7 @@ public:
             }
         }
         else if (scanner.getToken().type == T_Character) {
+            // todo clit
             scanner.fetchTokens();
             if (isAexpressionZ(scanner.getToken())) {
                 expressionZ(scanner);
@@ -343,8 +347,12 @@ public:
         else {
             syntaxError(scanner.getToken(), "case");
         }
-        if (scanner.getToken().type == T_Character || isNumericLiteral(scanner.getToken(),scanner.peekToken())) {
+        if (scanner.getToken().type == T_Character) {
+            // todo literal
             scanner.fetchTokens();
+        }
+        else if (isNumericLiteral(scanner.getToken(),scanner.peekToken())) {
+            numeric_literal(scanner);
         }
         else {
             syntaxError(scanner.getToken(), "literal");
@@ -503,6 +511,272 @@ public:
         }
     }
     
+    void parameter(Scanner & scanner) {
+        if (isAtype(scanner.getToken())) {
+            // get param type
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "type");
+        }
+        if (scanner.getToken().type == T_Identifier) {
+            // get param name
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "INDENTIFIER");
+        }
+        if (scanner.getToken().lexeme == "[") {
+            // change param type to array
+            scanner.fetchTokens();
+            if (scanner.getToken().lexeme == "]") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), "]");
+            }
+        }
+        // todo param
+        // update paramString
+    }
+    
+    void parameter_list(Scanner & scanner) {
+        parameter(scanner);
+        while (scanner.getToken().lexeme == ",") {
+            // update paramString
+            scanner.fetchTokens();
+            parameter(scanner);
+        }
+    }
+    
+    void field_declaration(Scanner & scanner) {
+        if (scanner.getToken().lexeme == "(") {
+            // todo method
+            // record method id
+            // enter method
+            //std::string paramString = "";
+            scanner.fetchTokens();
+            if (isAtype(scanner.getToken())) {
+                parameter_list(scanner);
+            }
+            if (scanner.getToken().lexeme == ")") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ")");
+            }
+            // update paramstring to method
+            method_body(scanner);
+            // exit method
+        }
+        else if (scanner.getToken().lexeme == "["
+                 || scanner.getToken().lexeme == "="
+                 || scanner.getToken().lexeme == ";") {
+            // todo instance variable
+            if (scanner.getToken().lexeme == "[") {
+                scanner.fetchTokens();
+                // ???? missing array length ????
+                if (scanner.getToken().lexeme == "]") {
+                    scanner.fetchTokens();
+                }
+                else {
+                    syntaxError(scanner.getToken(), "]");
+                }
+            }
+            if (scanner.getToken().lexeme == "=") {
+                scanner.fetchTokens();
+                assignment_expression(scanner);
+            }
+            if (scanner.getToken().lexeme == ";") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ";");
+            }
+        }
+        else {
+            syntaxError(scanner.getToken(), "field_delaration");
+        }
+    }
+    
+    void constructor_declaration(Scanner & scanner) {
+        if (scanner.getToken().type == T_Identifier) {
+            // check class name
+            // todo constructor
+            // enter constructor
+            // paramString = "";
+            scanner.fetchTokens();
+            if (scanner.getToken().lexeme == "(") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), "(");
+            }
+            if (isAtype(scanner.getToken())) {
+                parameter_list(scanner);
+            }
+            if (scanner.getToken().lexeme == ")") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), ")");
+            }
+            // update paramString to constructor
+            method_body(scanner);
+            // exit constructor
+        }
+        else {
+            syntaxError(scanner.getToken(), "constructor_declaration");
+        }
+    }
+    
+    void class_member_declaration(Scanner & scanner) {
+        if (scanner.getToken().lexeme == "public" || scanner.getToken().lexeme == "private") {
+            //todo get modifier
+            scanner.fetchTokens();
+            if (isAtype(scanner.getToken())) {
+                //todo get type
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), "type");
+            }
+            if (scanner.getToken().type == T_Identifier) {
+                //todo get variable or method name
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), "IDENTIFIER");
+            }
+            field_declaration(scanner);
+        }
+        else {
+            constructor_declaration(scanner);
+        }
+    }
+    
+    void class_declaration(Scanner & scanner) {
+        if (scanner.getToken().lexeme == "class") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "class");
+        }
+        if (scanner.getToken().type == T_Identifier) {
+            //todo class name
+            // enter class
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "class_name");
+        }
+        if (scanner.getToken().lexeme == "{") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "{");
+        }
+        while (scanner.getToken().lexeme != "}") {
+            class_member_declaration(scanner);
+        }
+        scanner.fetchTokens();  //comsume the closing "}"
+        //todo exit class
+    }
+    
+    void variable_declaration(Scanner & scanner) {
+        if (isAtype(scanner.getToken())) {
+            // get variable kind
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "type");
+        }
+        if (scanner.getToken().type == T_Identifier) {
+            // get variable name
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "INDENTIFIER");
+        }
+        if (scanner.getToken().lexeme == "[") {
+            // change the kind to array
+            scanner.fetchTokens();
+            if (scanner.getToken().lexeme == "]") {
+                scanner.fetchTokens();
+            }
+            else {
+                syntaxError(scanner.getToken(), "]");
+            }
+        }
+        // todo lvar
+        if (scanner.getToken().lexeme == "=") {
+            scanner.fetchTokens();
+            assignment_expression(scanner);
+        }
+        if (scanner.getToken().lexeme == ";") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), ";");
+        }
+    }
+    
+    void method_body(Scanner & scanner) {
+        if (scanner.getToken().lexeme == "{") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "{");
+        }
+        while (isAtype(scanner.getToken()) && scanner.peekToken().type == T_Identifier) {
+            variable_declaration(scanner);
+        }
+        while (scanner.getToken().lexeme != "}") {
+            statement(scanner);
+        }
+        scanner.fetchTokens();  //consume the closing "}"
+    }
+
+    void compiliation_unit(Scanner & scanner) {
+        while (scanner.getToken().lexeme == "class") {
+            class_declaration(scanner);
+        }
+        if (scanner.getToken().lexeme == "void") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "void");
+        }
+        if (scanner.getToken().lexeme == "kxi2019") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "kxi2019");
+        }
+        if (scanner.getToken().lexeme == "main") {
+            //todo main
+            // enter main
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "main");
+        }
+        if (scanner.getToken().lexeme == "(") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), "(");
+        }
+        if (scanner.getToken().lexeme == ")") {
+            scanner.fetchTokens();
+        }
+        else {
+            syntaxError(scanner.getToken(), ")");
+        }
+        method_body(scanner);
+        // todo exit main
+    }
+    
     void lexicalAnalysis() {
         Scanner scanner(sourceCodeFilename);
         scanner.fetchTokens();
@@ -517,7 +791,7 @@ public:
         Scanner scanner(sourceCodeFilename);
         scanner.fetchTokens();  // fetch a token to nextToken
         scanner.fetchTokens();  // fetch a token to currentToken and nextToken
-        statement(scanner);
+        compiliation_unit(scanner);
         scanner.printCurrentToken();
     }
     
