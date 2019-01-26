@@ -1,47 +1,33 @@
 
-"whileif(a<b,-10.x7z+AbC{10/-11if}
-
-!==='\\'4647a'4'ryerhth325664
-
-//
-//  main.cpp
-//  compiler
-//
-//  Created by jing hong chen on 1/9/19.
-//  Copyright © 2019 jing hong chen. All rights reserved.
-//
-
-#include <iostream>
-#include "Compiler.hpp"
-
-using namespace std;
-     
-int main(int argc, const char * argv[]) {
-    if (argc < 2) {
-        cout << "Please input the KXI source file name in the command line." << endl;
-    }
-    else {
-        Compiler newCompiler;
-        cout << newCompiler.lexicalAnalysis(argv[1]) << endl;
-    }
-    
-    return 0;
+class Cat {
+public int age;
+private int weight;
+public void run(int x, int y) {
+int speed; int arr[];
+speed = 7;
+}
+Cat() {return 2;}
 }
 
-using System;
-
-namespace DateProblem.Tests
+void kxi2019 main() { char c;
+c = 's';
+switch (larger) {
+case 1:
+break;
+case '\n':
+eraggr=ergeg;
+case 'd':
+ad || arg=atoi(4);
+}
+cin >> '3';
+if (x==y)
+ewrgerg = itoa(a543y4554);else if (rgerg)
 {
-    public class DateTimeToHumanReadableFormFormatter
-    {
-        public string Format(DateTime date, DateTime current)
-        {
-            var formatter = new DateTimeToHumanReadableFormFormatter();
-            var val = formatter.Format(DateTime.Now.AddDays(-1), DateTime.Now);
-			return val.ToString();
-        }
-    }
-	
-	
-}
-
+	{
+		{
+			x=324/ 11 +ag *c -argg >24 <ge >=argerg <=4 !=q == 3 ||b && c = new int (w4g, eg);
+		}
+	}
+} else
+break;
+ }

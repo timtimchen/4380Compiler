@@ -12,14 +12,22 @@
 #include <iostream>
 #include <string>
 #include "Scanner.hpp"
+#include "SymTable.hpp"
 
 class Compiler {
 private:
     std::string sourceCodeFilename;
+    SymTable symbolTable;
+    std::string currentClass;
+    std::string currentMethod;
+    std::string currentParam;
 
 public:
     Compiler(std::string filename) {
         sourceCodeFilename = filename;
+        currentClass = "";
+        currentMethod = "";
+        currentParam = "";
     }
     
     void syntaxError(Token token, std::string expected) {
@@ -58,11 +66,12 @@ public:
     }
     
     void numeric_literal(Scanner& scanner) {
+        std::string symValue = "";
         if (scanner.getToken().lexeme == "+" || scanner.getToken().lexeme == "-") {
-            //todo: integer literal
+            symValue += scanner.getToken().lexeme;
             scanner.fetchTokens();
             if (scanner.getToken().type == T_Number) {
-                //todo
+                symValue += scanner.getToken().lexeme;
                 scanner.fetchTokens();
             }
             else {
@@ -70,12 +79,13 @@ public:
             }
         }
         else if (scanner.getToken().type == T_Number) {
-            // todo
+            symValue += scanner.getToken().lexeme;
             scanner.fetchTokens();
         }
         else {
             syntaxError(scanner.getToken(), "numeric_literal");
         }
+        symbolTable.insert("g", "N", symValue, "ilit", "int", "", "", "public");
     }
     
     void argument_list(Scanner& scanner) {
@@ -792,7 +802,7 @@ public:
         scanner.fetchTokens();  // fetch a token to nextToken
         scanner.fetchTokens();  // fetch a token to currentToken and nextToken
         compiliation_unit(scanner);
-        scanner.printCurrentToken();
+        symbolTable.printAll();
     }
     
     void run() {
