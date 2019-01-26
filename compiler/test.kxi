@@ -6,7 +6,16 @@ public void run(int x, int y) {
 int speed; int arr[];
 speed = 7;
 }
-Cat() {return 2;}
+Cat() {
+int temp = 1;
+age = temp;
+}
+}
+
+class Dog {
+public int doggy(char cc[]) {
+return 2;
+}
 }
 
 void kxi2019 main() { char c;

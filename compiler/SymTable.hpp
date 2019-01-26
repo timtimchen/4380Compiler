@@ -25,7 +25,7 @@ private:
     std::map<int, std::string> symParam;
     std::map<int, std::string> symAccessMod;
 public:
-    void insert(std::string scope,
+    int insert(std::string scope,
                 std::string idType,
                 std::string value,
                 std::string kind,
@@ -33,8 +33,9 @@ public:
                 std::string returnType,
                 std::string parameter,
                 std::string accessMod) {
+        std::string symid = idType + std::to_string(nextID);
         symScope.insert(std::pair<int, std::string>(nextID, scope));
-        symID.insert(std::pair<int, std::string>(nextID, idType + std::to_string(nextID)));
+        symID.insert(std::pair<int, std::string>(nextID, symid));
         symValue.insert(std::pair<int, std::string>(nextID, value));
         symKind.insert(std::pair<int, std::string>(nextID, kind));
         symType.insert(std::pair<int, std::string>(nextID, type));
@@ -43,9 +44,22 @@ public:
         symAccessMod.insert(std::pair<int, std::string>(nextID, accessMod));
         
         nextID++;
+        
+        return nextID - 1;  //return the number id of the new symbol record
     }
     
-    int searchValue(std::string value);
+    void updateParam(int id, std::string newParam) {
+        symParam[id] = newParam;
+    }
+    
+    int searchValue(std::string value) {
+        for (auto it = symValue.begin(); it != symValue.end(); it++) {
+            if (it->second == value) {
+                return it->first;
+            }
+        }
+        return 0; //return zero if not found
+    }
     
     std::string getScope(int id) {
         return symScope[id];
@@ -89,13 +103,13 @@ public:
             std::cout << "\n\t\t\ttype: " << getType(id);
         }
         if (getReturnType(id).length() > 0) {
-            std::cout << "\n\t\t\truturnType: " << getType(id);
+            std::cout << "\n\t\t\truturnType: " << getReturnType(id);
         }
         if (getParam(id).length() > 0) {
-            std::cout << "\n\t\t\tParam: " << getType(id);
+            std::cout << "\n\t\t\tParam: " << getParam(id);
         }
         if (getAccessMod(id).length() > 0) {
-            std::cout << "\n\t\t\taccessMod: " << getType(id);
+            std::cout << "\n\t\t\taccessMod: " << getAccessMod(id);
         }
         std::cout << "\n";
     }

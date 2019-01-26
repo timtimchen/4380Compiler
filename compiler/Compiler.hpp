@@ -327,7 +327,7 @@ public:
             }
         }
         else if (scanner.getToken().type == T_Character) {
-            // todo clit
+            symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
             scanner.fetchTokens();
             if (isAexpressionZ(scanner.getToken())) {
                 expressionZ(scanner);
@@ -358,7 +358,7 @@ public:
             syntaxError(scanner.getToken(), "case");
         }
         if (scanner.getToken().type == T_Character) {
-            // todo literal
+            symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
             scanner.fetchTokens();
         }
         else if (isNumericLiteral(scanner.getToken(),scanner.peekToken())) {
@@ -400,7 +400,7 @@ public:
             while (scanner.getToken().lexeme != "}") {
                 statement(scanner);
             }
-            scanner.fetchTokens(); // comsume the "}"
+            scanner.fetchTokens(); // consume the closing "}"
         }
         else if (scanner.getToken().lexeme == "if") {
             scanner.fetchTokens();
@@ -522,22 +522,24 @@ public:
     }
     
     void parameter(Scanner & scanner) {
+        std::string paramType;
+        std::string paramName;
         if (isAtype(scanner.getToken())) {
-            // get param type
+            paramType = scanner.getToken().lexeme;
             scanner.fetchTokens();
         }
         else {
             syntaxError(scanner.getToken(), "type");
         }
         if (scanner.getToken().type == T_Identifier) {
-            // get param name
+            paramName = scanner.getToken().lexeme;
             scanner.fetchTokens();
         }
         else {
             syntaxError(scanner.getToken(), "INDENTIFIER");
         }
         if (scanner.getToken().lexeme == "[") {
-            // change param type to array
+            paramType = "@:" + paramType;
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == "]") {
                 scanner.fetchTokens();
@@ -546,25 +548,24 @@ public:
                 syntaxError(scanner.getToken(), "]");
             }
         }
-        // todo param
-        // update paramString
+        int tempId = symbolTable.insert("g" + currentClass + currentMethod, "P", paramName, "param", paramType, "", "", "private");
+        currentParam += ("P" + std::to_string(tempId));
     }
     
     void parameter_list(Scanner & scanner) {
         parameter(scanner);
         while (scanner.getToken().lexeme == ",") {
-            // update paramString
+            currentParam += ",";
             scanner.fetchTokens();
             parameter(scanner);
         }
     }
     
-    void field_declaration(Scanner & scanner) {
+    void field_declaration(Scanner & scanner, std::string modeStr, std::string typeStr, std::string nameStr) {
         if (scanner.getToken().lexeme == "(") {
-            // todo method
-            // record method id
-            // enter method
-            //std::string paramString = "";
+            int tempId = symbolTable.insert("g" + currentClass, "M", nameStr, "method", "", typeStr, "", modeStr);
+            currentMethod = "." + nameStr;
+            currentParam = "";
             scanner.fetchTokens();
             if (isAtype(scanner.getToken())) {
                 parameter_list(scanner);
@@ -575,24 +576,26 @@ public:
             else {
                 syntaxError(scanner.getToken(), ")");
             }
-            // update paramstring to method
+            symbolTable.updateParam(tempId, "[" + currentParam + "]");
             method_body(scanner);
-            // exit method
+            currentMethod = "";
         }
         else if (scanner.getToken().lexeme == "["
                  || scanner.getToken().lexeme == "="
                  || scanner.getToken().lexeme == ";") {
-            // todo instance variable
+            std::string tempType = typeStr;
             if (scanner.getToken().lexeme == "[") {
+                tempType = "@:" + tempType;
                 scanner.fetchTokens();
                 // ???? missing array length ????
-                if (scanner.getToken().lexeme == "]") {
+               if (scanner.getToken().lexeme == "]") {
                     scanner.fetchTokens();
                 }
                 else {
                     syntaxError(scanner.getToken(), "]");
                 }
             }
+            symbolTable.insert("g" + currentClass, "V", nameStr, "ivar", tempType, "", "", modeStr);
             if (scanner.getToken().lexeme == "=") {
                 scanner.fetchTokens();
                 assignment_expression(scanner);
@@ -611,10 +614,11 @@ public:
     
     void constructor_declaration(Scanner & scanner) {
         if (scanner.getToken().type == T_Identifier) {
-            // check class name
-            // todo constructor
-            // enter constructor
-            // paramString = "";
+            std::string nameStr = scanner.getToken().lexeme;
+            // ???? check class name ????
+            int tempId = symbolTable.insert("g" + currentClass, "X", nameStr, "Constructor", "", nameStr, "", "public");
+            currentMethod = "." + nameStr;
+            currentParam = "";
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == "(") {
                 scanner.fetchTokens();
@@ -631,9 +635,9 @@ public:
             else {
                 syntaxError(scanner.getToken(), ")");
             }
-            // update paramString to constructor
+            symbolTable.updateParam(tempId, "[" + currentParam + "]");
             method_body(scanner);
-            // exit constructor
+            currentMethod = "";
         }
         else {
             syntaxError(scanner.getToken(), "constructor_declaration");
@@ -641,24 +645,27 @@ public:
     }
     
     void class_member_declaration(Scanner & scanner) {
+        std::string modeStr;
+        std::string typeStr;
+        std::string nameStr;
         if (scanner.getToken().lexeme == "public" || scanner.getToken().lexeme == "private") {
-            //todo get modifier
+            modeStr = scanner.getToken().lexeme;
             scanner.fetchTokens();
             if (isAtype(scanner.getToken())) {
-                //todo get type
+                typeStr = scanner.getToken().lexeme;
                 scanner.fetchTokens();
             }
             else {
                 syntaxError(scanner.getToken(), "type");
             }
             if (scanner.getToken().type == T_Identifier) {
-                //todo get variable or method name
+                nameStr = scanner.getToken().lexeme;
                 scanner.fetchTokens();
             }
             else {
                 syntaxError(scanner.getToken(), "IDENTIFIER");
             }
-            field_declaration(scanner);
+            field_declaration(scanner, modeStr, typeStr, nameStr);
         }
         else {
             constructor_declaration(scanner);
@@ -673,8 +680,8 @@ public:
             syntaxError(scanner.getToken(), "class");
         }
         if (scanner.getToken().type == T_Identifier) {
-            //todo class name
-            // enter class
+            symbolTable.insert("g", "C", scanner.getToken().lexeme, "Class", "", "", "", "");
+            currentClass = "." + scanner.getToken().lexeme;
             scanner.fetchTokens();
         }
         else {
@@ -690,26 +697,28 @@ public:
             class_member_declaration(scanner);
         }
         scanner.fetchTokens();  //comsume the closing "}"
-        //todo exit class
+        currentClass = "";
     }
     
     void variable_declaration(Scanner & scanner) {
+        std::string typeStr;
+        std::string nameStr;
         if (isAtype(scanner.getToken())) {
-            // get variable kind
+            typeStr = scanner.getToken().lexeme;
             scanner.fetchTokens();
         }
         else {
             syntaxError(scanner.getToken(), "type");
         }
         if (scanner.getToken().type == T_Identifier) {
-            // get variable name
+            nameStr = scanner.getToken().lexeme;
             scanner.fetchTokens();
         }
         else {
             syntaxError(scanner.getToken(), "INDENTIFIER");
         }
         if (scanner.getToken().lexeme == "[") {
-            // change the kind to array
+            typeStr = "@:" + typeStr;
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == "]") {
                 scanner.fetchTokens();
@@ -718,7 +727,8 @@ public:
                 syntaxError(scanner.getToken(), "]");
             }
         }
-        // todo lvar
+        // ???? check duplicate ????
+        symbolTable.insert("g" + currentClass + currentMethod, "L", nameStr, "lvar", typeStr, "", "", "private");
         if (scanner.getToken().lexeme == "=") {
             scanner.fetchTokens();
             assignment_expression(scanner);
@@ -764,8 +774,8 @@ public:
             syntaxError(scanner.getToken(), "kxi2019");
         }
         if (scanner.getToken().lexeme == "main") {
-            //todo main
-            // enter main
+            symbolTable.insert("g", "F", "main", "main", "", "void", "[]", "public");
+            currentClass = ".main";
             scanner.fetchTokens();
         }
         else {
@@ -784,7 +794,7 @@ public:
             syntaxError(scanner.getToken(), ")");
         }
         method_body(scanner);
-        // todo exit main
+        currentClass = "";
     }
     
     void lexicalAnalysis() {
