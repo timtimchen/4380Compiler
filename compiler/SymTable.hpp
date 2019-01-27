@@ -10,8 +10,9 @@
 #define SymTable_h
 #define SYMID_START 100
 
-#include <map>
+#include <iostream>
 #include <string>
+#include <map>
 
 class SymTable {
 private:
@@ -44,7 +45,6 @@ public:
         symAccessMod.insert(std::pair<int, std::string>(nextID, accessMod));
         
         nextID++;
-        
         return nextID - 1;  //return the number id of the new symbol record
     }
     
@@ -52,10 +52,12 @@ public:
         symParam[id] = newParam;
     }
     
-    int searchValue(std::string value) {
+    int searchValue(std::string scope, std::string value) {
         for (auto it = symValue.begin(); it != symValue.end(); it++) {
             if (it->second == value) {
-                return it->first;
+                if (symScope[it->first] == scope) {
+                    return it->first;
+                }
             }
         }
         return 0; //return zero if not found

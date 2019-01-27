@@ -8,11 +8,15 @@ speed = 7;
 }
 Cat() {
 int temp = 1;
+//char temp;
 age = temp;
 }
+//public Cat run;
+//private int Cat;
 }
 
 class Dog {
+private int age;
 public int doggy(char cc[]) {
 return 2;
 }

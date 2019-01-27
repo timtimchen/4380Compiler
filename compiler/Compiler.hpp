@@ -35,6 +35,11 @@ public:
         exit(2);
     }
     
+    void duplicateVarError(int line, std::string name) {
+        std::cout << line << ": Found duplicated variable - " << name << std::endl;
+        exit(2);
+    }
+    
     bool isAtype(Token token) {
         return (token.type == T_Identifier
                 || token.lexeme == "int"
@@ -85,7 +90,9 @@ public:
         else {
             syntaxError(scanner.getToken(), "numeric_literal");
         }
-        symbolTable.insert("g", "N", symValue, "ilit", "int", "", "", "public");
+        if (symbolTable.searchValue("g", symValue) == 0) {
+            symbolTable.insert("g", "N", symValue, "ilit", "int", "", "", "public");
+        }
     }
     
     void argument_list(Scanner& scanner) {
@@ -327,7 +334,9 @@ public:
             }
         }
         else if (scanner.getToken().type == T_Character) {
-            symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
+            if (symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
+                symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
+            }
             scanner.fetchTokens();
             if (isAexpressionZ(scanner.getToken())) {
                 expressionZ(scanner);
@@ -358,7 +367,9 @@ public:
             syntaxError(scanner.getToken(), "case");
         }
         if (scanner.getToken().type == T_Character) {
-            symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
+            if (symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
+                symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
+            }
             scanner.fetchTokens();
         }
         else if (isNumericLiteral(scanner.getToken(),scanner.peekToken())) {
@@ -524,6 +535,7 @@ public:
     void parameter(Scanner & scanner) {
         std::string paramType;
         std::string paramName;
+        int paramLine = 0;
         if (isAtype(scanner.getToken())) {
             paramType = scanner.getToken().lexeme;
             scanner.fetchTokens();
@@ -533,6 +545,7 @@ public:
         }
         if (scanner.getToken().type == T_Identifier) {
             paramName = scanner.getToken().lexeme;
+            paramLine = scanner.getToken().lineNumber;
             scanner.fetchTokens();
         }
         else {
@@ -547,6 +560,9 @@ public:
             else {
                 syntaxError(scanner.getToken(), "]");
             }
+        }
+        if (symbolTable.searchValue("g" + currentClass + currentMethod, paramName) != 0) {
+            duplicateVarError(paramLine, paramName);
         }
         int tempId = symbolTable.insert("g" + currentClass + currentMethod, "P", paramName, "param", paramType, "", "", "private");
         currentParam += ("P" + std::to_string(tempId));
@@ -616,6 +632,9 @@ public:
         if (scanner.getToken().type == T_Identifier) {
             std::string nameStr = scanner.getToken().lexeme;
             // ???? check class name ????
+            if (symbolTable.searchValue("g" + currentClass, nameStr) != 0) {
+                duplicateVarError(scanner.getToken().lineNumber, nameStr);
+            }
             int tempId = symbolTable.insert("g" + currentClass, "X", nameStr, "Constructor", "", nameStr, "", "public");
             currentMethod = "." + nameStr;
             currentParam = "";
@@ -660,6 +679,9 @@ public:
             }
             if (scanner.getToken().type == T_Identifier) {
                 nameStr = scanner.getToken().lexeme;
+                if (symbolTable.searchValue("g" + currentClass, nameStr) != 0) {
+                    duplicateVarError(scanner.getToken().lineNumber, nameStr);
+                }
                 scanner.fetchTokens();
             }
             else {
@@ -680,7 +702,9 @@ public:
             syntaxError(scanner.getToken(), "class");
         }
         if (scanner.getToken().type == T_Identifier) {
-            symbolTable.insert("g", "C", scanner.getToken().lexeme, "Class", "", "", "", "");
+            if (symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
+                symbolTable.insert("g", "C", scanner.getToken().lexeme, "Class", "", "", "", "");
+            }
             currentClass = "." + scanner.getToken().lexeme;
             scanner.fetchTokens();
         }
@@ -712,6 +736,9 @@ public:
         }
         if (scanner.getToken().type == T_Identifier) {
             nameStr = scanner.getToken().lexeme;
+            if (symbolTable.searchValue("g" + currentClass + currentMethod, nameStr) != 0) {
+                duplicateVarError(scanner.getToken().lineNumber, nameStr);
+            }
             scanner.fetchTokens();
         }
         else {
@@ -727,7 +754,6 @@ public:
                 syntaxError(scanner.getToken(), "]");
             }
         }
-        // ???? check duplicate ????
         symbolTable.insert("g" + currentClass + currentMethod, "L", nameStr, "lvar", typeStr, "", "", "private");
         if (scanner.getToken().lexeme == "=") {
             scanner.fetchTokens();
