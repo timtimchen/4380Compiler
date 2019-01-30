@@ -18,7 +18,7 @@
 #include <iterator>
 
 #define REG_SIZE 13  // total general regesters
-#define MEM_SIZE 60000  // total bytes of memory
+#define MEM_SIZE 1000000  // total bytes of memory
 #define FIX_LENGTH 12  // fixed length of an instrution
 #define INT_SIZE 4  // size of an integer
 #define JMP 1

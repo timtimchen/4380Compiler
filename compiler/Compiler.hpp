@@ -21,6 +21,7 @@ private:
     std::string currentClass;
     std::string currentMethod;
     std::string currentParam;
+    bool flagOfPass;  // false for Pass 1, true for Pass 2
 
 public:
     Compiler(std::string filename) {
@@ -28,6 +29,7 @@ public:
         currentClass = "";
         currentMethod = "";
         currentParam = "";
+        flagOfPass = false;
     }
     
     void syntaxError(Token token, std::string expected) {
@@ -90,7 +92,7 @@ public:
         else {
             syntaxError(scanner.getToken(), "numeric_literal");
         }
-        if (symbolTable.searchValue("g", symValue) == 0) {
+        if (!flagOfPass && symbolTable.searchValue("g", symValue) == 0) {
             symbolTable.insert("g", "N", symValue, "ilit", "int", "", "", "public");
         }
     }
@@ -334,7 +336,7 @@ public:
             }
         }
         else if (scanner.getToken().type == T_Character) {
-            if (symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
+            if (!flagOfPass && symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
                 symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
             }
             scanner.fetchTokens();
@@ -367,7 +369,7 @@ public:
             syntaxError(scanner.getToken(), "case");
         }
         if (scanner.getToken().type == T_Character) {
-            if (symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
+            if (!flagOfPass && symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
                 symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
             }
             scanner.fetchTokens();
@@ -561,17 +563,21 @@ public:
                 syntaxError(scanner.getToken(), "]");
             }
         }
-        if (symbolTable.searchValue("g" + currentClass + currentMethod, paramName) != 0) {
-            duplicateVarError(paramLine, paramName);
+        if (!flagOfPass) {
+            if (symbolTable.searchValue("g" + currentClass + currentMethod, paramName) != 0) {
+                duplicateVarError(paramLine, paramName);
+            }
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "P", paramName, "param", paramType, "", "", "private");
+            currentParam += ("P" + std::to_string(tempId));
         }
-        int tempId = symbolTable.insert("g" + currentClass + currentMethod, "P", paramName, "param", paramType, "", "", "private");
-        currentParam += ("P" + std::to_string(tempId));
     }
     
     void parameter_list(Scanner & scanner) {
         parameter(scanner);
         while (scanner.getToken().lexeme == ",") {
-            currentParam += ",";
+            if (!flagOfPass) {
+                currentParam += ",";
+            }
             scanner.fetchTokens();
             parameter(scanner);
         }
@@ -579,7 +585,10 @@ public:
     
     void field_declaration(Scanner & scanner, std::string modeStr, std::string typeStr, std::string nameStr) {
         if (scanner.getToken().lexeme == "(") {
-            int tempId = symbolTable.insert("g" + currentClass, "M", nameStr, "method", "", typeStr, "", modeStr);
+            int tempId = 0;
+            if (!flagOfPass) {
+                tempId = symbolTable.insert("g" + currentClass, "M", nameStr, "method", "", typeStr, "", modeStr);
+            }
             currentMethod = "." + nameStr;
             currentParam = "";
             scanner.fetchTokens();
@@ -592,7 +601,9 @@ public:
             else {
                 syntaxError(scanner.getToken(), ")");
             }
-            symbolTable.updateParam(tempId, "[" + currentParam + "]");
+            if (!flagOfPass) {
+                symbolTable.updateParam(tempId, "[" + currentParam + "]");
+            }
             method_body(scanner);
             currentMethod = "";
         }
@@ -603,7 +614,6 @@ public:
             if (scanner.getToken().lexeme == "[") {
                 tempType = "@:" + tempType;
                 scanner.fetchTokens();
-                // ???? missing array length ????
                if (scanner.getToken().lexeme == "]") {
                     scanner.fetchTokens();
                 }
@@ -611,7 +621,9 @@ public:
                     syntaxError(scanner.getToken(), "]");
                 }
             }
-            symbolTable.insert("g" + currentClass, "V", nameStr, "ivar", tempType, "", "", modeStr);
+            if (!flagOfPass) {
+                symbolTable.insert("g" + currentClass, "V", nameStr, "ivar", tempType, "", "", modeStr);
+            }
             if (scanner.getToken().lexeme == "=") {
                 scanner.fetchTokens();
                 assignment_expression(scanner);
@@ -631,11 +643,13 @@ public:
     void constructor_declaration(Scanner & scanner) {
         if (scanner.getToken().type == T_Identifier) {
             std::string nameStr = scanner.getToken().lexeme;
-            // ???? check class name ????
-            if (symbolTable.searchValue("g" + currentClass, nameStr) != 0) {
-                duplicateVarError(scanner.getToken().lineNumber, nameStr);
+            int tempId = 0;
+            if (!flagOfPass) {
+                if (symbolTable.searchValue("g" + currentClass, nameStr) != 0) {
+                    duplicateVarError(scanner.getToken().lineNumber, nameStr);
+                }
+                tempId = symbolTable.insert("g" + currentClass, "X", nameStr, "Constructor", "", nameStr, "", "public");
             }
-            int tempId = symbolTable.insert("g" + currentClass, "X", nameStr, "Constructor", "", nameStr, "", "public");
             currentMethod = "." + nameStr;
             currentParam = "";
             scanner.fetchTokens();
@@ -654,7 +668,9 @@ public:
             else {
                 syntaxError(scanner.getToken(), ")");
             }
-            symbolTable.updateParam(tempId, "[" + currentParam + "]");
+            if (!flagOfPass) {
+                symbolTable.updateParam(tempId, "[" + currentParam + "]");
+            }
             method_body(scanner);
             currentMethod = "";
         }
@@ -679,7 +695,7 @@ public:
             }
             if (scanner.getToken().type == T_Identifier) {
                 nameStr = scanner.getToken().lexeme;
-                if (symbolTable.searchValue("g" + currentClass, nameStr) != 0) {
+                if (!flagOfPass && symbolTable.searchValue("g" + currentClass, nameStr) != 0) {
                     duplicateVarError(scanner.getToken().lineNumber, nameStr);
                 }
                 scanner.fetchTokens();
@@ -702,8 +718,13 @@ public:
             syntaxError(scanner.getToken(), "class");
         }
         if (scanner.getToken().type == T_Identifier) {
-            if (symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
-                symbolTable.insert("g", "C", scanner.getToken().lexeme, "Class", "", "", "", "");
+            if (!flagOfPass) {
+                if (symbolTable.searchValue("g", scanner.getToken().lexeme) != 0) {
+                    duplicateVarError(scanner.getToken().lineNumber, scanner.getToken().lexeme);
+                }
+                else {
+                    symbolTable.insert("g", "C", scanner.getToken().lexeme, "Class", "", "", "", "");
+                }
             }
             currentClass = "." + scanner.getToken().lexeme;
             scanner.fetchTokens();
@@ -736,7 +757,7 @@ public:
         }
         if (scanner.getToken().type == T_Identifier) {
             nameStr = scanner.getToken().lexeme;
-            if (symbolTable.searchValue("g" + currentClass + currentMethod, nameStr) != 0) {
+            if (!flagOfPass && symbolTable.searchValue("g" + currentClass + currentMethod, nameStr) != 0) {
                 duplicateVarError(scanner.getToken().lineNumber, nameStr);
             }
             scanner.fetchTokens();
@@ -754,7 +775,9 @@ public:
                 syntaxError(scanner.getToken(), "]");
             }
         }
-        symbolTable.insert("g" + currentClass + currentMethod, "L", nameStr, "lvar", typeStr, "", "", "private");
+        if (!flagOfPass) {
+            symbolTable.insert("g" + currentClass + currentMethod, "L", nameStr, "lvar", typeStr, "", "", "private");
+        }
         if (scanner.getToken().lexeme == "=") {
             scanner.fetchTokens();
             assignment_expression(scanner);
@@ -800,7 +823,9 @@ public:
             syntaxError(scanner.getToken(), "kxi2019");
         }
         if (scanner.getToken().lexeme == "main") {
-            symbolTable.insert("g", "F", "main", "main", "", "void", "[]", "public");
+            if (!flagOfPass) {
+                symbolTable.insert("g", "F", "main", "main", "", "void", "[]", "public");
+            }
             currentClass = ".main";
             scanner.fetchTokens();
         }
@@ -838,12 +863,21 @@ public:
         scanner.fetchTokens();  // fetch a token to nextToken
         scanner.fetchTokens();  // fetch a token to currentToken and nextToken
         compiliation_unit(scanner);
-        symbolTable.printAll();
+        flagOfPass = true;
+//        symbolTable.printAll();
+    }
+    
+    void semanticAnalysis() {
+        Scanner scanner(sourceCodeFilename);
+        scanner.fetchTokens();  // fetch a token to nextToken
+        scanner.fetchTokens();  // fetch a token to currentToken and nextToken
+        compiliation_unit(scanner);
     }
     
     void run() {
 //        lexicalAnalysis();
         syntaxAnalysis();
+        semanticAnalysis();
     }
 };
 
