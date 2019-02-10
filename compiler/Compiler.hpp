@@ -11,8 +11,22 @@
 
 #include <iostream>
 #include <string>
+#include <stack>
 #include "Scanner.hpp"
 #include "SymTable.hpp"
+
+struct OpRec {
+    std::string value;
+    int priority;
+};
+
+struct SAR {
+    int symID;
+    int lineNumber;
+    std::string type;
+    std::string value;
+    std::string action;
+};
 
 class Compiler {
 private:
@@ -22,6 +36,8 @@ private:
     std::string currentMethod;
     std::string currentParam;
     bool flagOfPass;  // false for Pass 1, true for Pass 2
+    std::stack<OpRec> OpStack;
+    std::stack<SAR> SAS;
 
 public:
     Compiler(std::string filename) {
@@ -37,9 +53,14 @@ public:
         exit(2);
     }
     
-    void duplicateVarError(int line, std::string name) {
-        std::cout << line << ": Found duplicated variable - " << name << std::endl;
+    void semanticError(int line,std::string errorMsg) {
+        std::cout << line << ": " << errorMsg << std::endl;
         exit(2);
+    }
+    
+    void unexpectedError(std::string errorType) {
+        std::cout << errorType << std::endl;
+        exit(4);
     }
     
     bool isAtype(Token token) {
@@ -345,10 +366,12 @@ public:
             }
         }
         else if (scanner.getToken().type == T_Identifier) {
+            if (flagOfPass) sa_iPush(scanner.getToken());
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == "(" || scanner.getToken().lexeme == "[") {
                 fn_arr_member(scanner);
             }
+            if (flagOfPass) sa_iExist();
             if (scanner.getToken().lexeme == ".") {
                 member_refz(scanner);
             }
@@ -565,7 +588,7 @@ public:
         }
         if (!flagOfPass) {
             if (symbolTable.searchValue("g" + currentClass + currentMethod, paramName) != 0) {
-                duplicateVarError(paramLine, paramName);
+                semanticError(paramLine, "Duplicate variable " + paramName);
             }
             int tempId = symbolTable.insert("g" + currentClass + currentMethod, "P", paramName, "param", paramType, "", "", "private");
             currentParam += ("P" + std::to_string(tempId));
@@ -646,7 +669,12 @@ public:
             int tempId = 0;
             if (!flagOfPass) {
                 if (symbolTable.searchValue("g" + currentClass, nameStr) != 0) {
-                    duplicateVarError(scanner.getToken().lineNumber, nameStr);
+                    if (scanner.peekToken().lexeme == "(") {
+                        semanticError(scanner.getToken().lineNumber, "Duplicate function " + nameStr);
+                    }
+                    else {
+                        semanticError(scanner.getToken().lineNumber, "Duplicate variable " + nameStr);
+                    }
                 }
                 tempId = symbolTable.insert("g" + currentClass, "X", nameStr, "Constructor", "", nameStr, "", "public");
             }
@@ -696,7 +724,12 @@ public:
             if (scanner.getToken().type == T_Identifier) {
                 nameStr = scanner.getToken().lexeme;
                 if (!flagOfPass && symbolTable.searchValue("g" + currentClass, nameStr) != 0) {
-                    duplicateVarError(scanner.getToken().lineNumber, nameStr);
+                    if (scanner.peekToken().lexeme == "(") {
+                        semanticError(scanner.getToken().lineNumber, "Duplicate function " + nameStr);
+                    }
+                    else {
+                        semanticError(scanner.getToken().lineNumber, "Duplicate variable " + nameStr);
+                    }
                 }
                 scanner.fetchTokens();
             }
@@ -720,7 +753,7 @@ public:
         if (scanner.getToken().type == T_Identifier) {
             if (!flagOfPass) {
                 if (symbolTable.searchValue("g", scanner.getToken().lexeme) != 0) {
-                    duplicateVarError(scanner.getToken().lineNumber, scanner.getToken().lexeme);
+                    semanticError(scanner.getToken().lineNumber, "Duplicate class " + scanner.getToken().lexeme);
                 }
                 else {
                     symbolTable.insert("g", "C", scanner.getToken().lexeme, "Class", "", "", "", "");
@@ -758,7 +791,7 @@ public:
         if (scanner.getToken().type == T_Identifier) {
             nameStr = scanner.getToken().lexeme;
             if (!flagOfPass && symbolTable.searchValue("g" + currentClass + currentMethod, nameStr) != 0) {
-                duplicateVarError(scanner.getToken().lineNumber, nameStr);
+                semanticError(scanner.getToken().lineNumber, "Duplicate variable " + nameStr);
             }
             scanner.fetchTokens();
         }
@@ -863,9 +896,126 @@ public:
         scanner.fetchTokens();  // fetch a token to nextToken
         scanner.fetchTokens();  // fetch a token to currentToken and nextToken
         compiliation_unit(scanner);
-        flagOfPass = true;
-//        symbolTable.printAll();
+        if (scanner.getToken().lexeme != "EOF") {
+            syntaxError(scanner.getToken(), "EOF");
+        }
+        else {
+            flagOfPass = true;
+        }
+        symbolTable.printAll();
     }
+    
+    void sa_iPush(Token token) {
+        SAR newSAR = {0, token.lineNumber, "variable", token.lexeme, "sa_iPush"};
+        SAS.push(newSAR);
+    }
+    
+    void sa_lPush() { }
+    
+    void sa_oPush() { }
+    
+    void sa_tPush() { }
+    
+    void sa_iExist() {
+        if (SAS.empty()) unexpectedError("SAS is empty -- #iExist\n");
+        if (SAS.top().type == "variable") {
+            int tempId = 0;
+            std::string currentPath = "g" + currentClass + currentMethod;
+            while (currentPath != "g") {
+                tempId = symbolTable.searchValue(currentPath, SAS.top().value);
+                if (tempId != 0) break;
+                currentPath = currentPath.substr(0, currentPath.find_last_of('.'));
+            }
+            if (tempId != 0) {
+                SAR newSAR = {tempId, SAS.top().lineNumber, "id_sar", SAS.top().value, "sa_iExist"};
+                SAS.pop();
+                SAS.push(newSAR);
+            }
+            else {
+                semanticError(SAS.top().lineNumber, "Variable \"" + SAS.top().value + "\" not defined");
+            }
+        }
+    }
+    
+    void sa_vPush() { }
+    
+    void sa_rExist() { }
+    
+    void sa_tExist() { }
+    
+    void sa_BAL() { }
+    
+    void sa_EAL() { }
+    
+    void sa_func() { }
+    
+    void sa_arr() { }
+    
+    void sa_if() { }
+    
+    void sa_while() { }
+    
+    void sa_return() { }
+    
+    void sa_cout() { }
+    
+    void sa_cin() { }
+    
+    void sa_atoi() { }
+    
+    void sa_itoa() { }
+    
+    void sa_newObj() { }
+    
+    void sa_newArray() { }
+    
+    void sa_CD() { }
+    
+    void sa_dup() { }
+    
+    void sa_spawn() { }
+    
+    void sa_lock() { }
+    
+    void sa_release() { }
+    
+    void sa_switch() { }
+    
+    void sa_DotOperator() { }
+    
+    void sa_ClosingParenthesis() { }
+    
+    void sa_ClosingBracket() { }
+    
+    void sa_Argument() { }
+    
+    void sa_EOE() { }
+    
+    void sa_AddOperator() { }
+    
+    void sa_SubtractOperator() { }
+    
+    void sa_MultiplyOperator() { }
+    
+    void sa_DivideOperator() { }
+    
+    void sa_AssignmetOperator() { }
+    
+    void sa_LessThanOperator() { }
+    
+    void sa_GreaterThanOperator() { }
+    
+    void sa_EqualOperator() { }
+    
+    void sa_LessEqualOperator() { }
+    
+    void sa_GreaterEqualOperator() { }
+    
+    void sa_AndOperator() { }
+    
+    void sa_OrOperator() { }
+    
+    void sa_NotEqualOperator() { }
     
     void semanticAnalysis() {
         Scanner scanner(sourceCodeFilename);
