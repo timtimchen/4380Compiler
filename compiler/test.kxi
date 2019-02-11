@@ -7,5 +7,11 @@ class Cat {
 
 void kxi2019 main() {
 	int x;	
-	x=y;
+	int y;
+	int g;
+	int f;
+	int k;
+	g = y;
+	x = y * g + f / k ;
+	f = g + x < y;
 }

@@ -52,6 +52,10 @@ public:
         symParam[id] = newParam;
     }
     
+    void updateName(int id) {
+        symValue[id] = symID[id];
+    }
+    
     int searchValue(std::string scope, std::string value) {
         for (auto it = symValue.begin(); it != symValue.end(); it++) {
             if (it->second == value) {

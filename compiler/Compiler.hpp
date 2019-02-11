@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include <stack>
+#include <map>
 #include "Scanner.hpp"
 #include "SymTable.hpp"
 
@@ -38,6 +39,7 @@ private:
     bool flagOfPass;  // false for Pass 1, true for Pass 2
     std::stack<OpRec> OpStack;
     std::stack<SAR> SAS;
+    std::map<std::string, int> operatorTable;
 
 public:
     Compiler(std::string filename) {
@@ -46,6 +48,24 @@ public:
         currentMethod = "";
         currentParam = "";
         flagOfPass = false;
+        
+        operatorTable.insert(std::pair<std::string, int>("*",8));
+        operatorTable.insert(std::pair<std::string, int>("/",8));
+        operatorTable.insert(std::pair<std::string, int>("+",7));
+        operatorTable.insert(std::pair<std::string, int>("-",7));
+        operatorTable.insert(std::pair<std::string, int>("<",6));
+        operatorTable.insert(std::pair<std::string, int>("<=",6));
+        operatorTable.insert(std::pair<std::string, int>(">",6));
+        operatorTable.insert(std::pair<std::string, int>(">=",6));
+        operatorTable.insert(std::pair<std::string, int>("==",5));
+        operatorTable.insert(std::pair<std::string, int>("!=",5));
+        operatorTable.insert(std::pair<std::string, int>("&&",4));
+        operatorTable.insert(std::pair<std::string, int>("||",3));
+        operatorTable.insert(std::pair<std::string, int>("=",2));
+        operatorTable.insert(std::pair<std::string, int>("(",1));
+        operatorTable.insert(std::pair<std::string, int>(")",1));
+        operatorTable.insert(std::pair<std::string, int>("[",1));
+        operatorTable.insert(std::pair<std::string, int>("]",1));
     }
     
     void syntaxError(Token token, std::string expected) {
@@ -253,54 +273,67 @@ public:
     
     void expressionZ(Scanner& scanner) {
         if (scanner.getToken().lexeme == "=") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             assignment_expression(scanner);
         }
         else if (scanner.getToken().lexeme == "&&") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == "||") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == "==") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == "!=") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == "<=") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == ">=") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == "<") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == ">") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == "+") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == "-") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == "*") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
         else if (scanner.getToken().lexeme == "/") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
         }
@@ -549,6 +582,7 @@ public:
         else {
             expression(scanner);
             if (scanner.getToken().lexeme == ";") {
+                if (flagOfPass) sa_EOE();
                 scanner.fetchTokens();
             }
             else {
@@ -902,7 +936,7 @@ public:
         else {
             flagOfPass = true;
         }
-        symbolTable.printAll();
+//        symbolTable.printAll();
     }
     
     void sa_iPush(Token token) {
@@ -912,12 +946,74 @@ public:
     
     void sa_lPush() { }
     
-    void sa_oPush() { }
+    void sa_oPush(Token token) {
+        if (token.lexeme == "=" && !OpStack.empty())
+            semanticError(token.lineNumber, "Assignment operation error");
+        else if (token.lexeme == "(") {
+            OpRec newOpRec = {token.lexeme, operatorTable[token.lexeme]};
+            OpStack.push(newOpRec);
+        }
+        else {
+            while (true) {
+                if (OpStack.empty()) {
+                    OpRec newOpRec = {token.lexeme, operatorTable[token.lexeme]};
+                    OpStack.push(newOpRec);
+                    break;
+                }
+                else if (OpStack.top().priority < operatorTable[token.lexeme]) {
+                    OpRec newOpRec = {token.lexeme, operatorTable[token.lexeme]};
+                    OpStack.push(newOpRec);
+                    break;
+                }
+                else {
+                    if (OpStack.top().value == "&&") {
+                        sa_AndOperator();
+                    }
+                    else if (OpStack.top().value == "||") {
+                        sa_OrOperator();
+                    }
+                    else if (OpStack.top().value == "==") {
+                        sa_EqualOperator();
+                    }
+                    else if (OpStack.top().value == "!=") {
+                        sa_NotEqualOperator();
+                    }
+                    else if (OpStack.top().value == "<=") {
+                        sa_LessEqualOperator();
+                    }
+                    else if (OpStack.top().value == ">=") {
+                        sa_GreaterEqualOperator();
+                    }
+                    else if (OpStack.top().value == "<") {
+                        sa_LessThanOperator();
+                    }
+                    else if (OpStack.top().value == ">") {
+                        sa_GreaterThanOperator();
+                    }
+                    else if (OpStack.top().value == "+") {
+                        sa_AddOperator();
+                    }
+                    else if (OpStack.top().value == "-") {
+                        sa_SubtractOperator();
+                    }
+                    else if (OpStack.top().value == "*") {
+                        sa_MultiplyOperator();
+                    }
+                    else if (OpStack.top().value == "/") {
+                        sa_DivideOperator();
+                    }
+                    else {
+                        semanticError(0, "Unexpected Error on sa_oPush");
+                    }
+                }
+            }
+        }
+    }
     
     void sa_tPush() { }
     
     void sa_iExist() {
-        if (SAS.empty()) unexpectedError("SAS is empty -- #iExist\n");
+        if (SAS.empty()) unexpectedError("SAS is empty -- #iExist");
         if (SAS.top().type == "variable") {
             int tempId = 0;
             std::string currentPath = "g" + currentClass + currentMethod;
@@ -989,33 +1085,462 @@ public:
     
     void sa_Argument() { }
     
-    void sa_EOE() { }
+    void sa_EOE() {
+        while (!OpStack.empty()) {
+            if (OpStack.top().value == "=") {
+                sa_AssignmetOperator();
+            }
+            else if (OpStack.top().value == "&&") {
+                sa_AndOperator();
+            }
+            else if (OpStack.top().value == "||") {
+                sa_OrOperator();
+            }
+            else if (OpStack.top().value == "==") {
+                sa_EqualOperator();
+            }
+            else if (OpStack.top().value == "!=") {
+                sa_NotEqualOperator();
+            }
+            else if (OpStack.top().value == "<=") {
+                sa_LessEqualOperator();
+            }
+            else if (OpStack.top().value == ">=") {
+                sa_GreaterEqualOperator();
+            }
+            else if (OpStack.top().value == "<") {
+                sa_LessThanOperator();
+            }
+            else if (OpStack.top().value == ">") {
+                sa_GreaterThanOperator();
+            }
+            else if (OpStack.top().value == "+") {
+                sa_AddOperator();
+            }
+            else if (OpStack.top().value == "-") {
+                sa_SubtractOperator();
+            }
+            else if (OpStack.top().value == "*") {
+                sa_MultiplyOperator();
+            }
+            else if (OpStack.top().value == "/") {
+                sa_DivideOperator();
+            }
+            else {
+                semanticError(0, "Unexpected Error on sa_EOE");
+            }
+        }
+        while (!SAS.empty())
+            SAS.pop();
+    }
     
-    void sa_AddOperator() { }
+    void sa_AddOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if (symbolTable.getType(exp1.symID) == "int" && symbolTable.getType(exp2.symID) == "int") {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Add"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " + "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
     
-    void sa_SubtractOperator() { }
+    void sa_SubtractOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if (symbolTable.getType(exp1.symID) == "int" && symbolTable.getType(exp2.symID) == "int") {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Subtract"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " - "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
     
-    void sa_MultiplyOperator() { }
+    void sa_MultiplyOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if (symbolTable.getType(exp1.symID) == "int" && symbolTable.getType(exp2.symID) == "int") {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Multiply"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " * "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
     
-    void sa_DivideOperator() { }
+    void sa_DivideOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if (symbolTable.getType(exp1.symID) == "int" && symbolTable.getType(exp2.symID) == "int") {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Divide"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " / "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
     
-    void sa_AssignmetOperator() { }
+    void sa_AssignmetOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if (isLValue(exp1.symID) && symbolTable.getType(exp1.symID) == symbolTable.getType(exp2.symID)) {
+            OpStack.pop();
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " = "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
     
-    void sa_LessThanOperator() { }
+    void sa_LessThanOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if ((symbolTable.getType(exp1.symID) == "int" || symbolTable.getType(exp1.symID) == "char")
+            && symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Less"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " < "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
     
-    void sa_GreaterThanOperator() { }
+    void sa_GreaterThanOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if ((symbolTable.getType(exp1.symID) == "int" || symbolTable.getType(exp1.symID) == "char")
+            && symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Greater"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " > "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
     
-    void sa_EqualOperator() { }
+    void sa_EqualOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if (symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Equal"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " == "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+
+    }
     
-    void sa_LessEqualOperator() { }
+    void sa_LessEqualOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if ((symbolTable.getType(exp1.symID) == "int" || symbolTable.getType(exp1.symID) == "char")
+            && symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_LessEqual"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " <= "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
     
-    void sa_GreaterEqualOperator() { }
+    void sa_GreaterEqualOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if ((symbolTable.getType(exp1.symID) == "int" || symbolTable.getType(exp1.symID) == "char")
+            && symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_GreaterEqual"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " >= "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
     
-    void sa_AndOperator() { }
+    void sa_AndOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if (symbolTable.getType(exp1.symID) == "bool") {
+            if (symbolTable.getType(exp2.symID) == "bool") {
+                OpStack.pop();
+                int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+                symbolTable.updateName(tempId);
+                SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_And"};
+                SAS.push(newSAR);
+            }
+            else {
+                semanticError(exp2.lineNumber, "And requires bool found " + symbolTable.getType(exp2.symID));
+            }
+        }
+        else {
+            semanticError(exp1.lineNumber, "And requires bool found " + symbolTable.getType(exp1.symID));
+        }
+    }
     
-    void sa_OrOperator() { }
+    void sa_OrOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if (symbolTable.getType(exp1.symID) == "bool") {
+            if (symbolTable.getType(exp2.symID) == "bool") {
+                OpStack.pop();
+                int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+                symbolTable.updateName(tempId);
+                SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Or"};
+                SAS.push(newSAR);
+            }
+            else {
+                semanticError(exp2.lineNumber, "Or requires bool found " + symbolTable.getType(exp2.symID));
+            }
+        }
+        else {
+            semanticError(exp1.lineNumber, "Or requires bool found " + symbolTable.getType(exp1.symID));
+        }
+    }
     
-    void sa_NotEqualOperator() { }
+    void sa_NotEqualOperator() {
+        SAR exp1, exp2;
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp2 = SAS.top();
+            SAS.pop();
+        }
+        if (SAS.empty())
+            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+        else {
+            exp1 = SAS.top();
+            SAS.pop();
+        }
+        if (symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
+            OpStack.pop();
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            symbolTable.updateName(tempId);
+            SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Less"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(exp2.lineNumber,
+                          "Invalid Operation "
+                          + symbolTable.getType(exp1.symID) + " "
+                          + symbolTable.getValue(exp1.symID) + " != "
+                          + symbolTable.getType(exp2.symID) + " "
+                          + symbolTable.getValue(exp2.symID));
+        }
+    }
+    
+    bool isLValue(int sid) {
+        return symbolTable.getKind(sid) == "ivar" || symbolTable.getKind(sid) == "lvar";
+    }
     
     void semanticAnalysis() {
         Scanner scanner(sourceCodeFilename);
