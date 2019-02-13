@@ -178,6 +178,7 @@ public:
         if (scanner.getToken().lexeme == ".") {
             scanner.fetchTokens();
             if (scanner.getToken().type == T_Identifier) {
+                if (flagOfPass) sa_iPush(scanner.getToken());
                 scanner.fetchTokens();
             }
             else {
@@ -186,6 +187,7 @@ public:
             if (scanner.getToken().lexeme == "(" || scanner.getToken().lexeme == "[") {
                 fn_arr_member(scanner);
             }
+            if (flagOfPass) sa_rExist();
             if (scanner.getToken().lexeme == ".") {
                 member_refz(scanner);
             }
@@ -1035,7 +1037,29 @@ public:
     
     void sa_vPush() { }
     
-    void sa_rExist() { }
+    void sa_rExist() {
+        if (SAS.empty()) unexpectedError("SAS is empty -- #rExist");
+        SAR topSAR = SAS.top();
+        SAS.pop();
+        if (SAS.empty()) unexpectedError("SAS is empty -- #rExist");
+        SAR nextSAR = SAS.top();
+        SAS.pop();
+        
+        if (topSAR.type == "variable") {
+            int classID = symbolTable.getClassIDFromObject(nextSAR.symID);
+            if (classID == 0) {
+                semanticError(topSAR.lineNumber, "Variable \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
+            }
+            int tempId = symbolTable.searchValue("g." + symbolTable.getValue(classID), topSAR.value);
+            if (tempId == 0 || symbolTable.getKind(tempId) != "ivar" || symbolTable.getAccessMod(tempId) != "public") {
+                semanticError(topSAR.lineNumber, "Variable \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
+            }
+            else {
+                SAR newSAR = {tempId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSAR.value, "sa_rExist"};
+                SAS.push(newSAR);
+            }
+        }
+    }
     
     void sa_tExist() { }
     
@@ -1137,13 +1161,13 @@ public:
     void sa_AddOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_AddOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_AddOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1159,22 +1183,22 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " + "
+                          + exp1.value + " + "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     
     void sa_SubtractOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_SubtractOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_SubtractOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1190,22 +1214,22 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " - "
+                          + exp1.value + " - "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     
     void sa_MultiplyOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_MultiplyOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_MultiplyOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1221,22 +1245,22 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " * "
+                          + exp1.value + " * "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     
     void sa_DivideOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_DivideOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_DivideOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1252,9 +1276,9 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " / "
+                          + exp1.value + " / "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     
@@ -1279,22 +1303,22 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " = "
+                          + exp1.value + " = "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     
     void sa_LessThanOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_LessThanOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_LessThanOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1311,22 +1335,22 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " < "
+                          + exp1.value + " < "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     
     void sa_GreaterThanOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_GreaterThanOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_GreaterThanOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1343,22 +1367,22 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " > "
+                          + exp1.value + " > "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     
     void sa_EqualOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_EqualOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_EqualOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1374,9 +1398,9 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " == "
+                          + exp1.value + " == "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
 
     }
@@ -1384,13 +1408,13 @@ public:
     void sa_LessEqualOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_LessEqualOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_LessEqualOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1407,22 +1431,22 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " <= "
+                          + exp1.value + " <= "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     
     void sa_GreaterEqualOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_GreaterEqualOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_GreaterEqualOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1439,22 +1463,22 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " >= "
+                          + exp1.value + " >= "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     
     void sa_AndOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_AndOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_AndOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1479,13 +1503,13 @@ public:
     void sa_OrOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_OrOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_OrOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1510,13 +1534,13 @@ public:
     void sa_NotEqualOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_NotEqualOperator");
         else {
             exp2 = SAS.top();
             SAS.pop();
         }
         if (SAS.empty())
-            semanticError(0, "Unexpected Error in sa_AssignmetOperator");
+            semanticError(0, "Unexpected Error in sa_NotEqualOperator");
         else {
             exp1 = SAS.top();
             SAS.pop();
@@ -1532,9 +1556,9 @@ public:
             semanticError(exp2.lineNumber,
                           "Invalid Operation "
                           + symbolTable.getType(exp1.symID) + " "
-                          + symbolTable.getValue(exp1.symID) + " != "
+                          + exp1.value + " != "
                           + symbolTable.getType(exp2.symID) + " "
-                          + symbolTable.getValue(exp2.symID));
+                          + exp2.value);
         }
     }
     

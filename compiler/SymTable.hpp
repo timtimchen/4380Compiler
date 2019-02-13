@@ -67,6 +67,14 @@ public:
         return 0; //return zero if not found
     }
     
+    int getClassIDFromObject(int id) {
+        int tempId = searchValue("g", getType(id));
+        if (tempId != 0 && getKind(tempId) == "Class")
+            return tempId;
+        else
+            return 0;
+    }
+    
     std::string getScope(int id) {
         return symScope[id];
     }

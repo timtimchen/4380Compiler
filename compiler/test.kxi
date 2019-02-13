@@ -1,8 +1,12 @@
 class Cat {
-	private int x;
+	public int x;
 	Cat() {
 		x;
 	}
+}
+
+class Dog {
+public int y;
 }
 
 void kxi2019 main() {
@@ -11,7 +15,12 @@ void kxi2019 main() {
 	int g;
 	int f;
 	int k;
+	Cat a;
+	Dog b;
+
 	g = y;
 	x = y * g + f / k ;
-	f = g + x < y;
+//	f = g + x < y;
+	
+	a.x = b.y;
 }
