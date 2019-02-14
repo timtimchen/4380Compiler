@@ -1,12 +1,20 @@
 class Cat {
-	public int x;
+	public bool x;
 	Cat() {
 		x;
 	}
+	public int f1(char a, int b) {
+	}
+	
+	public Mouse f2(int x) {}
 }
 
 class Dog {
-public int y;
+public bool y;
+}
+
+class Mouse {
+    public Dog f3() {}
 }
 
 void kxi2019 main() {
@@ -15,12 +23,21 @@ void kxi2019 main() {
 	int g;
 	int f;
 	int k;
-	Cat a;
-	Dog b;
+	Cat cat;
+	Dog dog;
+	Mouse mouse;
+	char j;
+	Mouse r;
+	Cat s = new Cat(r);
 
 	g = y;
 	x = y * g + f / k ;
 //	f = g + x < y;
 	
-	a.x = b.y;
+	cat.x = dog.y;
+	
+	x = cat.f1(j,g) + g * y;
+	
+	cat.f2(g).f3().y = x != k;
+	
 }
