@@ -222,11 +222,20 @@ public:
     
     void new_declaration(Scanner& scanner) {
         if (scanner.getToken().lexeme == "(") {
+            if (flagOfPass) {
+                sa_oPush(scanner.getToken());
+                sa_BAL();
+            }
             scanner.fetchTokens();
             if (scanner.getToken().lexeme != ")") {
                 argument_list(scanner);
             }
             if (scanner.getToken().lexeme == ")") {
+                if (flagOfPass) {
+                    sa_ClosingParenthesis();
+                    sa_EAL();
+                    sa_newObj();
+                }
                 scanner.fetchTokens();
             }
             else {
@@ -234,9 +243,14 @@ public:
             }
         }
         else if (scanner.getToken().lexeme == "[") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
             if (scanner.getToken().lexeme == "]") {
+                if (flagOfPass) {
+                    sa_ClosingBracket();
+                    sa_newArray();
+                }
                 scanner.fetchTokens();
             }
             else {
@@ -284,6 +298,7 @@ public:
         else if (scanner.getToken().lexeme == "new") {
             scanner.fetchTokens();
             if (isAtype(scanner.getToken())) {
+                if (flagOfPass) sa_iPush(scanner.getToken());
                 scanner.fetchTokens();
                 new_declaration(scanner);
             }
@@ -852,9 +867,11 @@ public:
         }
         if (scanner.getToken().type == T_Identifier) {
             nameStr = scanner.getToken().lexeme;
+            //#dup
             if (!flagOfPass && symbolTable.searchValue("g" + currentClass + currentMethod, nameStr) != 0) {
                 semanticError(scanner.getToken().lineNumber, "Duplicate variable " + nameStr);
             }
+            if (flagOfPass) sa_vPush(scanner.getToken());
             scanner.fetchTokens();
         }
         else {
@@ -874,10 +891,12 @@ public:
             symbolTable.insert("g" + currentClass + currentMethod, "L", nameStr, "lvar", typeStr, "", "", "private");
         }
         if (scanner.getToken().lexeme == "=") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             assignment_expression(scanner);
         }
         if (scanner.getToken().lexeme == ";") {
+            if (flagOfPass) sa_EOE();
             scanner.fetchTokens();
         }
         else {
@@ -968,7 +987,7 @@ public:
     }
     
     void sa_iPush(Token token) {
-        SAR newSAR = {0, token.lineNumber, "variable", token.lexeme, "sa_iPush"};
+        SAR newSAR = {0, token.lineNumber, "id_sar", token.lexeme, "sa_iPush"};
         SAS.push(newSAR);
     }
     
@@ -977,7 +996,7 @@ public:
     void sa_oPush(Token token) {
         if (token.lexeme == "=" && !OpStack.empty())
             semanticError(token.lineNumber, "Assignment operation error");
-        else if (token.lexeme == "(") {
+        else if (token.lexeme == "(" || token.lexeme == "[") {
             OpRec newOpRec = {token.lexeme, operatorTable[token.lexeme]};
             OpStack.push(newOpRec);
         }
@@ -1053,7 +1072,7 @@ public:
     
     void sa_iExist() {
         if (SAS.empty()) unexpectedError("SAS is empty -- #iExist");
-        if (SAS.top().reference == "variable") {
+        if (SAS.top().reference == "id_sar") {
             int tempId = 0;
             std::string currentPath = "g" + currentClass + currentMethod;
             while (currentPath != "g") {
@@ -1072,7 +1091,14 @@ public:
         }
     }
     
-    void sa_vPush() { }
+    void sa_vPush(Token token) {
+        int tempId = symbolTable.searchValue("g" + currentClass + currentMethod, token.lexeme);
+        if (tempId == 0) {
+            semanticError(token.lineNumber, "Unexpected error in sa_vPush");
+        }
+        SAR newSAR = {tempId, token.lineNumber, "variable", token.lexeme, "sa_vPush"};
+        SAS.push(newSAR);
+    }
     
     void sa_rExist() {
         if (SAS.empty()) unexpectedError("SAS is empty -- #rExist");
@@ -1082,7 +1108,7 @@ public:
         SAR nextSAR = SAS.top();
         SAS.pop();
         
-        if (topSAR.reference == "variable") {
+        if (topSAR.reference == "id_sar") {
             int classID = symbolTable.getClassIDFromObject(nextSAR.symID);
             if (classID == 0) {
                 semanticError(topSAR.lineNumber, "Variable \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
@@ -1189,9 +1215,62 @@ public:
     
     void sa_itoa() { }
     
-    void sa_newObj() { }
+    void sa_newObj() {
+        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_newObj");
+        SAR alSAR = SAS.top();
+        SAS.pop();
+        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_newObj");
+        SAR typeSAR = SAS.top();
+        SAS.pop();
+        
+        int tempId = symbolTable.searchValue("g." + typeSAR.value, typeSAR.value);
+        if (tempId == 0 || symbolTable.getKind(tempId) != "Constructor" || symbolTable.getAccessMod(tempId) != "public") {
+            semanticError(typeSAR.lineNumber, "Constructor \""  + typeSAR.value + alSAR.value + "\" not defined");
+        }
+        std::string funcSignature = typeSAR.value;
+        std::string paramStr = symbolTable.getParam(tempId);
+        if (paramStr.size() <= 2)
+            funcSignature += "()";
+        else {
+            std::vector<std::string> paramList = split(paramStr.substr(1,paramStr.size() - 2), ',');
+            funcSignature += "(";
+            for (int i = 0; i < paramList.size(); i++) {
+                funcSignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
+                funcSignature += ",";
+            }
+            funcSignature[funcSignature.size() - 1] = ')';
+        }
+        if (funcSignature != typeSAR.value + alSAR.value) {
+            semanticError(typeSAR.lineNumber, "Constructor \""  + typeSAR.value + alSAR.value + "\" not defined");
+        }
+        else {
+            int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", typeSAR.value, "", "", "private");
+            SAR newSAR = {newId, typeSAR.lineNumber, "new_sar", typeSAR.value + alSAR.value, "sa_newObj"};
+            SAS.push(newSAR);
+        }
+    }
     
-    void sa_newArray() { }
+    void sa_newArray() {
+        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_newObj");
+        SAR arrIndex = SAS.top();
+        SAS.pop();
+        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_newObj");
+        SAR typeSAR = SAS.top();
+        SAS.pop();
+        
+        if (symbolTable.getType(arrIndex.symID) != "int") {
+            semanticError(typeSAR.lineNumber, "Array requires int index got " + symbolTable.getType(arrIndex.symID));
+        }
+        
+        if (typeSAR.value == "int" || typeSAR.value == "bool" || typeSAR.value == "char" || symbolTable.searchValue("g", typeSAR.value) != 0) {
+            int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "@:" + typeSAR.value, "", "", "private");
+            SAR newSAR = {newId, typeSAR.lineNumber, "new_sar", "", "sa_newArray"};
+            SAS.push(newSAR);
+        }
+        else {
+            semanticError(typeSAR.lineNumber, "Type \""  + typeSAR.value + "\" not defined");
+        }
+    }
     
     void sa_CD() { }
     
@@ -1258,7 +1337,56 @@ public:
             OpStack.pop(); //remove the beginning parenthesis
     }
     
-    void sa_ClosingBracket() { }
+    void sa_ClosingBracket() {
+        while (!OpStack.empty() && OpStack.top().value != "[") {
+            if (OpStack.top().value == "=") {
+                sa_AssignmetOperator();
+            }
+            else if (OpStack.top().value == "&&") {
+                sa_AndOperator();
+            }
+            else if (OpStack.top().value == "||") {
+                sa_OrOperator();
+            }
+            else if (OpStack.top().value == "==") {
+                sa_EqualOperator();
+            }
+            else if (OpStack.top().value == "!=") {
+                sa_NotEqualOperator();
+            }
+            else if (OpStack.top().value == "<=") {
+                sa_LessEqualOperator();
+            }
+            else if (OpStack.top().value == ">=") {
+                sa_GreaterEqualOperator();
+            }
+            else if (OpStack.top().value == "<") {
+                sa_LessThanOperator();
+            }
+            else if (OpStack.top().value == ">") {
+                sa_GreaterThanOperator();
+            }
+            else if (OpStack.top().value == "+") {
+                sa_AddOperator();
+            }
+            else if (OpStack.top().value == "-") {
+                sa_SubtractOperator();
+            }
+            else if (OpStack.top().value == "*") {
+                sa_MultiplyOperator();
+            }
+            else if (OpStack.top().value == "/") {
+                sa_DivideOperator();
+            }
+            else {
+                semanticError(0, "Unexpected Error on sa_ClosingBracket");
+            }
+        }
+        if (OpStack.empty())
+            semanticError(0, "Unexpected Error on sa_ClosingBracket");
+        else
+            OpStack.pop(); //remove the beginning Bracket
+    }
     
     void sa_Argument() {
         while (!OpStack.empty() && OpStack.top().value != "(") {

@@ -1,6 +1,6 @@
 class Cat {
 	public bool x;
-	Cat() {
+	Cat(Mouse m) {
 		x;
 	}
 	public int f1(char a, int b) {
@@ -27,8 +27,8 @@ void kxi2019 main() {
 	Dog dog;
 	Mouse mouse;
 	char j;
-	Mouse r;
-	Cat s = new Cat(r);
+	Cat s = new Cat(mouse);
+	Cat t[] = new Cat[k];
 
 	g = y;
 	x = y * g + f / k ;
