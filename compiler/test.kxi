@@ -1,8 +1,10 @@
 class Cat {
 	public bool x;
+	
 	Cat(Mouse m) {
 		x;
 	}
+	
 	public int f1(char a, int b) {
 	}
 	
@@ -10,7 +12,21 @@ class Cat {
 }
 
 class Dog {
-public bool y;
+	public bool y;	
+	
+	private int r;
+	
+	public char f1(int i, bool b) {}
+	
+	private char c[];
+
+	private void test() {
+	char arr[];
+	
+ 		f1(r * 4, true);
+ 		c [ r + 3 ] = arr [ 5 - r ];
+	}
+
 }
 
 class Mouse {
@@ -26,7 +42,8 @@ void kxi2019 main() {
 	Cat cat;
 	Dog dog;
 	Mouse mouse;
-	char j;
+	char j = 'a';
+	char newline = '\n';
 	Cat s = new Cat(mouse);
 	Cat t[] = new Cat[k];
 
@@ -40,4 +57,5 @@ void kxi2019 main() {
 	
 	cat.f2(g).f3().y = x != k;
 	
+	dog.f1( +7 + g * -233, x < y == false && true);
 }

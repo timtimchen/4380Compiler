@@ -149,6 +149,8 @@ public:
         if (!flagOfPass && symbolTable.searchValue("g", symValue) == 0) {
             symbolTable.insert("g", "N", symValue, "ilit", "int", "", "", "public");
         }
+        Token newToken = {T_Number, scanner.getToken().lineNumber, symValue};
+        if (flagOfPass) sa_lPush(newToken);
     }
     
     void argument_list(Scanner& scanner) {
@@ -183,9 +185,14 @@ public:
             }
         }
         else if (scanner.getToken().lexeme == "[") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
             if (scanner.getToken().lexeme == "]") {
+                if (flagOfPass) {
+                    sa_ClosingBracket();
+                    sa_arr();
+                }
                 scanner.fetchTokens();
             }
             else {
@@ -397,18 +404,21 @@ public:
             }
         }
         else if (scanner.getToken().lexeme == "true") {
+            if (flagOfPass) sa_lPush(scanner.getToken());
             scanner.fetchTokens();
             if (isAexpressionZ(scanner.getToken())) {
                 expressionZ(scanner);
             }
         }
         else if (scanner.getToken().lexeme == "false") {
+            if (flagOfPass) sa_lPush(scanner.getToken());
             scanner.fetchTokens();
             if (isAexpressionZ(scanner.getToken())) {
                 expressionZ(scanner);
             }
         }
         else if (scanner.getToken().lexeme == "null") {
+            if (flagOfPass) sa_lPush(scanner.getToken());
             scanner.fetchTokens();
             if (isAexpressionZ(scanner.getToken())) {
                 expressionZ(scanner);
@@ -433,6 +443,7 @@ public:
             if (!flagOfPass && symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
                 symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
             }
+            if (flagOfPass) sa_lPush(scanner.getToken());
             scanner.fetchTokens();
             if (isAexpressionZ(scanner.getToken())) {
                 expressionZ(scanner);
@@ -468,6 +479,7 @@ public:
             if (!flagOfPass && symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
                 symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
             }
+            if (flagOfPass) sa_lPush(scanner.getToken());
             scanner.fetchTokens();
         }
         else if (isNumericLiteral(scanner.getToken(),scanner.peekToken())) {
@@ -982,6 +994,9 @@ public:
         }
         else {
             flagOfPass = true;
+            symbolTable.insert("g", "Z", "true", "zlit", "bool", "", "", "public");
+            symbolTable.insert("g", "Z", "false", "zlit", "bool", "", "", "public");
+            symbolTable.insert("g", "Z", "null", "zlit", "null", "", "", "public");
         }
 //        symbolTable.printAll();
     }
@@ -991,7 +1006,14 @@ public:
         SAS.push(newSAR);
     }
     
-    void sa_lPush() { }
+    void sa_lPush(Token token) {
+        int tempId = symbolTable.searchValue("g", token.lexeme);
+        if (tempId == 0) {
+            semanticError(token.lineNumber, "Unexpected error in sa_lPush");
+        }
+        SAR newSAR = {tempId, token.lineNumber, "lit_sar", token.lexeme, "sa_lPush"};
+        SAS.push(newSAR);
+    }
     
     void sa_oPush(Token token) {
         if (token.lexeme == "=" && !OpStack.empty())
@@ -1089,6 +1111,64 @@ public:
                 semanticError(SAS.top().lineNumber, "Variable \"" + SAS.top().value + "\" not defined");
             }
         }
+        else if (SAS.top().reference == "func_sar") {
+            int tempId = 0;
+            std::string currentPath = "g" + currentClass + currentMethod;
+            std::string funcName = SAS.top().value.substr(0, SAS.top().value.find_first_of('('));
+            while (currentPath != "g") {
+                tempId = symbolTable.searchValue(currentPath, funcName);
+                if (tempId != 0) break;
+                currentPath = currentPath.substr(0, currentPath.find_last_of('.'));
+            }
+            if (tempId != 0 && symbolTable.getKind(tempId) == "method") {
+                std::string funcSignature = symbolTable.getValue(tempId);
+                std::string paramStr = symbolTable.getParam(tempId);
+                if (paramStr.size() <= 2)
+                    funcSignature += "()";
+                else {
+                    std::vector<std::string> paramList = split(paramStr.substr(1,paramStr.size() - 2), ',');
+                    funcSignature += "(";
+                    for (int i = 0; i < paramList.size(); i++) {
+                        funcSignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
+                        funcSignature += ",";
+                    }
+                    funcSignature[funcSignature.size() - 1] = ')';
+                }
+                if (SAS.top().value != funcSignature) {
+                    semanticError(SAS.top().lineNumber, "Function \""  + SAS.top().value + "\" not defined");
+                }
+                else {
+                    int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", symbolTable.getReturnType(tempId), "", "", "private");
+                    SAR newSAR = {newId, SAS.top().lineNumber, "ref_sar", SAS.top().value, "sa_rExist"};
+                    SAS.pop();
+                    SAS.push(newSAR);
+                }
+            }
+            else {
+                semanticError(SAS.top().lineNumber, "Function \"" + SAS.top().value + "\" not defined");
+            }
+        }
+        else if (SAS.top().reference == "arr_sar") {
+            int tempId = 0;
+            std::string currentPath = "g" + currentClass + currentMethod;
+            while (currentPath != "g") {
+                tempId = symbolTable.searchValue(currentPath, SAS.top().value);
+                if (tempId != 0) break;
+                currentPath = currentPath.substr(0, currentPath.find_last_of('.'));
+            }
+            if (tempId != 0 && symbolTable.getType(tempId).size() > 0 && symbolTable.getType(tempId)[0] == '@') {
+                //todo: use SAS.top().symID to find the index of array
+                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private");
+                SAR newSAR = {newId, SAS.top().lineNumber, "id_sar", symbolTable.getSymID(newId), "sa_iExist"};
+                SAS.pop();
+                SAS.push(newSAR);
+            }
+            else {
+                semanticError(SAS.top().lineNumber, "Array \"" + SAS.top().value + "\" not defined");
+            }
+        }
+        else
+            semanticError(SAS.top().lineNumber, "unknown SAR " + SAS.top().value);
     }
     
     void sa_vPush(Token token) {
@@ -1199,7 +1279,21 @@ public:
         SAS.push(newSAR);
     }
     
-    void sa_arr() { }
+    void sa_arr() {
+        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_arr");
+        SAR arrIndex = SAS.top();
+        SAS.pop();
+        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_arr");
+        SAR idSAR = SAS.top();
+        SAS.pop();
+\
+        if (symbolTable.getType(arrIndex.symID) != "int") {
+            semanticError(idSAR.lineNumber, "Array requires int index got " + symbolTable.getType(arrIndex.symID));
+        }
+        
+        SAR newSAR = {arrIndex.symID, idSAR.lineNumber, "arr_sar", idSAR.value, "sa_arr"};
+        SAS.push(newSAR);
+    }
     
     void sa_if() { }
     
@@ -1251,10 +1345,10 @@ public:
     }
     
     void sa_newArray() {
-        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_newObj");
+        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_newArray");
         SAR arrIndex = SAS.top();
         SAS.pop();
-        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_newObj");
+        if (SAS.empty()) unexpectedError("SAS is empty -- #sa_newArray");
         SAR typeSAR = SAS.top();
         SAS.pop();
         
