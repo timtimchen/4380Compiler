@@ -391,9 +391,11 @@ public:
     
     void expression(Scanner& scanner) {
         if (scanner.getToken().lexeme == "(") {
+            if (flagOfPass) sa_oPush(scanner.getToken());
             scanner.fetchTokens();
             expression(scanner);
             if (scanner.getToken().lexeme == ")") {
+                if (flagOfPass) sa_ClosingParenthesis();
                 scanner.fetchTokens();
                 if (isAexpressionZ(scanner.getToken())) {
                     expressionZ(scanner);
@@ -425,6 +427,7 @@ public:
             }
         }
         else if (scanner.getToken().lexeme == "this") {
+            if (flagOfPass) sa_thisPush(scanner.getToken());
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == ".") {
                 member_refz(scanner);
@@ -526,6 +529,7 @@ public:
         else if (scanner.getToken().lexeme == "if") {
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == "(") {
+                if (flagOfPass) sa_oPush(scanner.getToken());
                 scanner.fetchTokens();
             }
             else {
@@ -533,6 +537,10 @@ public:
             }
             expression(scanner);
             if (scanner.getToken().lexeme == ")") {
+                if (flagOfPass) {
+                    sa_ClosingParenthesis();
+                    sa_if();
+                }
                 scanner.fetchTokens();
             }
             else {
@@ -547,6 +555,7 @@ public:
         else if (scanner.getToken().lexeme == "while") {
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == "(") {
+                if (flagOfPass) sa_oPush(scanner.getToken());
                 scanner.fetchTokens();
             }
             else {
@@ -554,6 +563,10 @@ public:
             }
             expression(scanner);
             if (scanner.getToken().lexeme == ")") {
+                if (flagOfPass) {
+                    sa_ClosingParenthesis();
+                    sa_while();
+                }
                 scanner.fetchTokens();
             }
             else {
@@ -567,6 +580,7 @@ public:
                 expression(scanner);
             }
             if (scanner.getToken().lexeme == ";") {
+                if (flagOfPass) sa_return(scanner.getToken().lineNumber);
                 scanner.fetchTokens();
             }
             else {
@@ -583,6 +597,7 @@ public:
             }
             expression(scanner);
             if (scanner.getToken().lexeme == ";") {
+                if (flagOfPass) sa_cout(scanner.getToken().lineNumber);
                 scanner.fetchTokens();
             }
             else {
@@ -599,6 +614,7 @@ public:
             }
             expression(scanner);
             if (scanner.getToken().lexeme == ";") {
+                if (flagOfPass) sa_cin(scanner.getToken().lineNumber);
                 scanner.fetchTokens();
             }
             else {
@@ -735,10 +751,12 @@ public:
                 symbolTable.insert("g" + currentClass, "V", nameStr, "ivar", tempType, "", "", modeStr);
             }
             if (scanner.getToken().lexeme == "=") {
+                if (flagOfPass) sa_oPush(scanner.getToken());
                 scanner.fetchTokens();
                 assignment_expression(scanner);
             }
             if (scanner.getToken().lexeme == ";") {
+                if (flagOfPass) sa_EOE();
                 scanner.fetchTokens();
             }
             else {
@@ -767,6 +785,7 @@ public:
             }
             currentMethod = "." + nameStr;
             currentParam = "";
+            if (flagOfPass) sa_CD(scanner.getToken());
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == "(") {
                 scanner.fetchTokens();
@@ -810,6 +829,7 @@ public:
                 syntaxError(scanner.getToken(), "type");
             }
             if (scanner.getToken().type == T_Identifier) {
+                if (flagOfPass) sa_vPush(scanner.getToken());
                 nameStr = scanner.getToken().lexeme;
                 if (!flagOfPass && symbolTable.searchValue("g" + currentClass, nameStr) != 0) {
                     if (scanner.peekToken().lexeme == "(") {
@@ -1092,6 +1112,11 @@ public:
         SAS.push(newSAR);
     }
     
+    void sa_thisPush(Token token) {
+        SAR newSAR = {0, token.lineNumber, "this_sar", token.lexeme, "sa_thisPush"};
+        SAS.push(newSAR);
+    }
+    
     void sa_iExist() {
         if (SAS.empty()) unexpectedError("SAS is empty -- #iExist");
         if (SAS.top().reference == "id_sar") {
@@ -1189,12 +1214,17 @@ public:
         SAS.pop();
         
         if (topSAR.reference == "id_sar") {
-            int classID = symbolTable.getClassIDFromObject(nextSAR.symID);
+            int classID = 0;
+            if (nextSAR.value == "this")
+                classID = symbolTable.searchValue("g", currentClass.substr(1));
+            else
+                classID = symbolTable.getClassIDFromObject(nextSAR.symID);
             if (classID == 0) {
                 semanticError(topSAR.lineNumber, "Variable \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
             int tempId = symbolTable.searchValue("g." + symbolTable.getValue(classID), topSAR.value);
-            if (tempId == 0 || symbolTable.getKind(tempId) != "ivar" || symbolTable.getAccessMod(tempId) != "public") {
+            if (tempId == 0 || symbolTable.getKind(tempId) != "ivar" ||
+                (nextSAR.value != "this" && symbolTable.getAccessMod(tempId) != "public")) {
                 semanticError(topSAR.lineNumber, "Variable \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
             else {
@@ -1203,13 +1233,18 @@ public:
             }
         }
         else if (topSAR.reference == "func_sar") {
-            int classID = symbolTable.getClassIDFromObject(nextSAR.symID);
+            int classID = 0;
+            if (nextSAR.value == "this")
+                classID = symbolTable.searchValue("g", currentClass.substr(1));
+            else
+                classID = symbolTable.getClassIDFromObject(nextSAR.symID);
             if (classID == 0) {
-                semanticError(topSAR.lineNumber, "Variable \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
+                semanticError(topSAR.lineNumber, "Function \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
             std::string funcName = topSAR.value.substr(0, topSAR.value.find_first_of('('));
             int tempId = symbolTable.searchValue("g." + symbolTable.getValue(classID), funcName);
-            if (tempId == 0 || symbolTable.getKind(tempId) != "method" || symbolTable.getAccessMod(tempId) != "public") {
+            if (tempId == 0 || symbolTable.getKind(tempId) != "method" ||
+                (nextSAR.value != "this" && symbolTable.getAccessMod(tempId) != "public")) {
                 semanticError(topSAR.lineNumber, "Function \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
             std::string funcSignature = symbolTable.getValue(tempId);
@@ -1234,9 +1269,31 @@ public:
                 SAS.push(newSAR);
             }
         }
+        else if (topSAR.reference == "arr_sar") {
+            int classID = 0;
+            if (nextSAR.value == "this")
+                classID = symbolTable.searchValue("g", currentClass.substr(1));
+            else
+                classID = symbolTable.getClassIDFromObject(nextSAR.symID);
+            if (classID == 0) {
+                semanticError(topSAR.lineNumber, "Array \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
+            }
+            int tempId = symbolTable.searchValue("g." + symbolTable.getValue(classID), topSAR.value);
+            if (tempId == 0 || symbolTable.getType(tempId).size() == 0 || symbolTable.getType(tempId)[0] != '@' ||
+                (nextSAR.value != "this" && symbolTable.getAccessMod(tempId) != "public")) {
+                semanticError(topSAR.lineNumber, "Array \"" + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
+            }
+            else {
+                //todo: use topSAR.symID to find the index of array
+                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private");
+                SAR newSAR = {newId, topSAR.lineNumber, "id_sar", symbolTable.getSymID(newId), "sa_rExist"};
+                SAS.push(newSAR);
+            }
+        }
+        else
+            semanticError(topSAR.lineNumber, "unknown SAR " + topSAR.value);
     }
     
-    void sa_tExist() { }
     
     void sa_BAL() {
         SAR newSAR = {0, 0, "bal_sar", "", "sa_BAL"};
@@ -1295,19 +1352,210 @@ public:
         SAS.push(newSAR);
     }
     
-    void sa_if() { }
+    void sa_if() {
+        if (SAS.empty()) unexpectedError("Unexpected Error: SAS empty in sa_if()");
+        if (symbolTable.getType(SAS.top().symID) == "bool") {
+            SAS.pop();
+        }
+        else
+            semanticError(SAS.top().lineNumber, "'if' requires 'bool' got \'" + symbolTable.getType(SAS.top().symID) + "\'");
+    }
     
-    void sa_while() { }
+    void sa_while() {
+        if (SAS.empty()) unexpectedError("Unexpected Error: SAS empty in sa_if()");
+        if (symbolTable.getType(SAS.top().symID) == "bool") {
+            SAS.pop();
+        }
+        else
+            semanticError(SAS.top().lineNumber, "'while' requires 'bool' got \'" + symbolTable.getType(SAS.top().symID) + "\'");
+    }
     
-    void sa_return() { }
+    void sa_return(int lineNumber) {
+        int tempId = symbolTable.searchValue("g" + currentClass, currentMethod.substr(1));
+        if (tempId == 0) {
+            unexpectedError("Unexpected Error: function id not found");
+        }
+        else {
+            while (!OpStack.empty()) {
+                if (OpStack.top().value == "=") {
+                    sa_AssignmetOperator();
+                }
+                else if (OpStack.top().value == "&&") {
+                    sa_AndOperator();
+                }
+                else if (OpStack.top().value == "||") {
+                    sa_OrOperator();
+                }
+                else if (OpStack.top().value == "==") {
+                    sa_EqualOperator();
+                }
+                else if (OpStack.top().value == "!=") {
+                    sa_NotEqualOperator();
+                }
+                else if (OpStack.top().value == "<=") {
+                    sa_LessEqualOperator();
+                }
+                else if (OpStack.top().value == ">=") {
+                    sa_GreaterEqualOperator();
+                }
+                else if (OpStack.top().value == "<") {
+                    sa_LessThanOperator();
+                }
+                else if (OpStack.top().value == ">") {
+                    sa_GreaterThanOperator();
+                }
+                else if (OpStack.top().value == "+") {
+                    sa_AddOperator();
+                }
+                else if (OpStack.top().value == "-") {
+                    sa_SubtractOperator();
+                }
+                else if (OpStack.top().value == "*") {
+                    sa_MultiplyOperator();
+                }
+                else if (OpStack.top().value == "/") {
+                    sa_DivideOperator();
+                }
+                else {
+                    semanticError(0, "Unexpected Error on sa_return");
+                }
+            }
+            std::string expressionType;
+            if (SAS.empty()) {
+                expressionType = "void";
+            }
+            else {
+                expressionType = symbolTable.getType(SAS.top().symID);
+            }
+            while (!SAS.empty()) SAS.pop();
+            if (expressionType == symbolTable.getReturnType(tempId)) {
+                //todo return a value;
+            }
+            else
+                semanticError(lineNumber, "Function requires \"" + symbolTable.getReturnType(tempId) + "\" returned \"" + expressionType + "\"");
+        }
+    }
     
-    void sa_cout() { }
+    void sa_cout(int lineNumber) {
+        while (!OpStack.empty()) {
+            if (OpStack.top().value == "=") {
+                sa_AssignmetOperator();
+            }
+            else if (OpStack.top().value == "&&") {
+                sa_AndOperator();
+            }
+            else if (OpStack.top().value == "||") {
+                sa_OrOperator();
+            }
+            else if (OpStack.top().value == "==") {
+                sa_EqualOperator();
+            }
+            else if (OpStack.top().value == "!=") {
+                sa_NotEqualOperator();
+            }
+            else if (OpStack.top().value == "<=") {
+                sa_LessEqualOperator();
+            }
+            else if (OpStack.top().value == ">=") {
+                sa_GreaterEqualOperator();
+            }
+            else if (OpStack.top().value == "<") {
+                sa_LessThanOperator();
+            }
+            else if (OpStack.top().value == ">") {
+                sa_GreaterThanOperator();
+            }
+            else if (OpStack.top().value == "+") {
+                sa_AddOperator();
+            }
+            else if (OpStack.top().value == "-") {
+                sa_SubtractOperator();
+            }
+            else if (OpStack.top().value == "*") {
+                sa_MultiplyOperator();
+            }
+            else if (OpStack.top().value == "/") {
+                sa_DivideOperator();
+            }
+            else {
+                semanticError(0, "Unexpected Error on sa_cout");
+            }
+        }
+        std::string expressionType;
+        if (SAS.empty()) {
+            expressionType = "void";
+        }
+        else {
+            expressionType = symbolTable.getType(SAS.top().symID);
+        }
+        if (expressionType == "char" || expressionType == "int") {
+            //todo cout
+        }
+        else
+            semanticError(lineNumber, "cout not defined for " + expressionType);
+        while (!SAS.empty()) SAS.pop();
+    }
     
-    void sa_cin() { }
-    
-    void sa_atoi() { }
-    
-    void sa_itoa() { }
+    void sa_cin(int lineNumber) {
+        while (!OpStack.empty()) {
+            if (OpStack.top().value == "=") {
+                sa_AssignmetOperator();
+            }
+            else if (OpStack.top().value == "&&") {
+                sa_AndOperator();
+            }
+            else if (OpStack.top().value == "||") {
+                sa_OrOperator();
+            }
+            else if (OpStack.top().value == "==") {
+                sa_EqualOperator();
+            }
+            else if (OpStack.top().value == "!=") {
+                sa_NotEqualOperator();
+            }
+            else if (OpStack.top().value == "<=") {
+                sa_LessEqualOperator();
+            }
+            else if (OpStack.top().value == ">=") {
+                sa_GreaterEqualOperator();
+            }
+            else if (OpStack.top().value == "<") {
+                sa_LessThanOperator();
+            }
+            else if (OpStack.top().value == ">") {
+                sa_GreaterThanOperator();
+            }
+            else if (OpStack.top().value == "+") {
+                sa_AddOperator();
+            }
+            else if (OpStack.top().value == "-") {
+                sa_SubtractOperator();
+            }
+            else if (OpStack.top().value == "*") {
+                sa_MultiplyOperator();
+            }
+            else if (OpStack.top().value == "/") {
+                sa_DivideOperator();
+            }
+            else {
+                semanticError(0, "Unexpected Error on sa_cin");
+            }
+        }
+        std::string expressionType;
+        if (SAS.empty()) {
+            expressionType = "void";
+        }
+        else {
+            expressionType = symbolTable.getType(SAS.top().symID);
+        }
+        if ((expressionType == "char" || expressionType == "int") &&
+            !SAS.empty() && isLValue(SAS.top().symID)) {
+            //todo cin
+        }
+        else
+            semanticError(lineNumber, "cin not defined for " + expressionType);
+        while (!SAS.empty()) SAS.pop();
+    }
     
     void sa_newObj() {
         if (SAS.empty()) unexpectedError("SAS is empty -- #sa_newObj");
@@ -1366,19 +1614,10 @@ public:
         }
     }
     
-    void sa_CD() { }
-    
-    void sa_dup() { }
-    
-    void sa_spawn() { }
-    
-    void sa_lock() { }
-    
-    void sa_release() { }
-    
-    void sa_switch() { }
-    
-    void sa_DotOperator() { }
+    void sa_CD(Token token) {
+        if (token.lexeme != currentClass.substr(1))
+            semanticError(token.lineNumber, "Constructor \"" + token.lexeme + "\" must match class name \"" + currentClass.substr(1) + "\"");
+    }
     
     void sa_ClosingParenthesis() {
         while (!OpStack.empty() && OpStack.top().value != "(") {
@@ -1575,8 +1814,7 @@ public:
                 semanticError(0, "Unexpected Error on sa_EOE");
             }
         }
-        while (!SAS.empty())
-            SAS.pop();
+        while (!SAS.empty()) SAS.pop();
     }
     
     void sa_AddOperator() {
@@ -1992,6 +2230,7 @@ public:
         scanner.fetchTokens();  // fetch a token to nextToken
         scanner.fetchTokens();  // fetch a token to currentToken and nextToken
         compiliation_unit(scanner);
+        std::cout << "Semantic Check Passed\n";
     }
     
     void run() {

@@ -2,13 +2,29 @@ class Cat {
 	public bool x;
 	
 	Cat(Mouse m) {
-		x;
+		Dog x;
+		return x.f1(3, this.x);
 	}
 	
 	public int f1(char a, int b) {
+		int y;
+		int f;
+		return (b - 7 * ( 6 + f) ) / y;
 	}
 	
-	public Mouse f2(int x) {}
+	public Mouse f2(int i) {
+		int temp[];
+		char c;
+		// i = temp;
+		cout << f1(c, i);
+		cout << temp[i] + i * 35;
+		cout << c;
+		//cin >> f1(c, i);
+		//cin >> temp[i] + i * 35;
+		//cin >> i;
+		cin >> temp[i];
+		cin >> c;
+	}
 }
 
 class Dog {
@@ -16,21 +32,42 @@ class Dog {
 	
 	private int r;
 	
-	public char f1(int i, bool b) {}
+	public Cat f1(int i, bool b) {}
 	
-	private char c[];
+	public char c[];
 
-	private void test() {
+	private void test(int y) {
 	char arr[];
 	
+ 		while (this.y) {
  		f1(r * 4, true);
  		c [ r + 3 ] = arr [ 5 - r ];
+ 		}
+ 		this.y = false;
+ 		
+ 		this.f1(y, this.y);
+		return;
 	}
-
+	
 }
 
 class Mouse {
-    public Dog f3() {}
+	private int f;
+	private int k;
+	private Cat cat;
+	public Dog dog;
+	public Mouse mouse;
+	public char j = 'a';
+	public char newline = '\n';
+	public Cat s = new Cat(mouse);
+	public Cat t[] = new Cat[k];
+	
+    Mouse() {
+    	return mouse;
+    }
+    
+    public Dog f3() {
+    }
 }
 
 void kxi2019 main() {
@@ -47,7 +84,8 @@ void kxi2019 main() {
 	Cat s = new Cat(mouse);
 	Cat t[] = new Cat[k];
 
-	g = y;
+	
+	if (j == 'b') g = y;
 	x = y * g + f / k ;
 //	f = g + x < y;
 	
@@ -57,5 +95,11 @@ void kxi2019 main() {
 	
 	cat.f2(g).f3().y = x != k;
 	
-	dog.f1( +7 + g * -233, x < y == false && true);
+	//dog.test(dog.r);
+	
+	cat = dog.f1( +7 + g * -233, x < y == false && true);
+	
+	 		//f1(4, true);
+
+	dog.c[(x - 7 * ( g + f) ) / y] = j;
 }
