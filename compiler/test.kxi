@@ -3,6 +3,18 @@ class Cat {
 	
 	Cat(Mouse m) {
 		Dog x;
+		int i;
+		int ii[];
+		char c;
+		
+		ii[i] = i;
+		ii = ii;
+		//null = this;
+		//this = x;
+		//123 = 321;
+		//'c' = c;
+		
+		
 		return x.f1(3, this.x);
 	}
 	
@@ -41,7 +53,7 @@ class Dog {
 	
  		while (this.y) {
  		f1(r * 4, true);
- 		c [ r + 3 ] = arr [ 5 - r ];
+ 		(c [ r + 3 ]) = arr [ 5 - r ];
  		}
  		this.y = false;
  		
@@ -80,7 +92,7 @@ void kxi2019 main() {
 	Dog dog;
 	Mouse mouse;
 	char j = 'a';
-	char newline = '\n';
+	char newline = ('\n');
 	Cat s = new Cat(mouse);
 	Cat t[] = new Cat[k];
 
@@ -91,13 +103,13 @@ void kxi2019 main() {
 	
 	cat.x = dog.y;
 	
-	x = cat.f1(j,g) + g * y;
+	x = (cat.f1(j,g) + g * y);
 	
 	cat.f2(g).f3().y = x != k;
 	
 	//dog.test(dog.r);
 	
-	cat = dog.f1( +7 + g * -233, x < y == false && true);
+	(cat) = dog.f1( +7 + g * -233, x < y == false && true);
 	
 	 		//f1(4, true);
 

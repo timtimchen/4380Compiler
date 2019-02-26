@@ -25,6 +25,7 @@ private:
     std::map<int, std::string> symReturnType;
     std::map<int, std::string> symParam;
     std::map<int, std::string> symAccessMod;
+    std::map<int, int> symOffset;
 public:
     int insert(std::string scope,
                 std::string idType,
@@ -33,7 +34,8 @@ public:
                 std::string type,
                 std::string returnType,
                 std::string parameter,
-                std::string accessMod) {
+                std::string accessMod,
+               int offset) {
         std::string symid = idType + std::to_string(nextID);
         symScope.insert(std::pair<int, std::string>(nextID, scope));
         symID.insert(std::pair<int, std::string>(nextID, symid));
@@ -43,9 +45,14 @@ public:
         symReturnType.insert(std::pair<int, std::string>(nextID, returnType));
         symParam.insert(std::pair<int, std::string>(nextID, parameter));
         symAccessMod.insert(std::pair<int, std::string>(nextID, accessMod));
-        
+        symOffset.insert(std::pair<int, int>(nextID, offset));
+
         nextID++;
         return nextID - 1;  //return the number id of the new symbol record
+    }
+    
+    void updateOffset(int id, int newOffset) {
+        symOffset[id] = newOffset;
     }
     
     void updateParam(int id, std::string newParam) {
@@ -107,6 +114,10 @@ public:
         return symAccessMod[id];
     }
     
+    int getOffset(int id) {
+        return symOffset[id];
+    }
+    
     void print(int id) {
         std::cout << "Scope:\t\t" << getScope(id) << std::endl;
         std::cout << "Symid:\t\t" << getSymID(id) << std::endl;
@@ -124,6 +135,9 @@ public:
         }
         if (getAccessMod(id).length() > 0) {
             std::cout << "\n\t\t\taccessMod: " << getAccessMod(id);
+        }
+        if (getOffset(id) > 0) {
+            std::cout << "\n\t\t\tOffset: " << getOffset(id);
         }
         std::cout << "\n";
     }

@@ -38,6 +38,9 @@ private:
     std::string currentMethod;
     std::string currentParam;
     bool flagOfPass;  // false for Pass 1, true for Pass 2
+    int classOffset;
+    int methodOffset;
+    int currentMethodId;
     std::stack<OpRec> OpStack;
     std::stack<SAR> SAS;
     std::map<std::string, int> operatorTable;
@@ -49,6 +52,7 @@ public:
         currentMethod = "";
         currentParam = "";
         flagOfPass = false;
+        currentMethodId = 0;
         
         operatorTable.insert(std::pair<std::string, int>("*",8));
         operatorTable.insert(std::pair<std::string, int>("/",8));
@@ -147,7 +151,7 @@ public:
             syntaxError(scanner.getToken(), "numeric_literal");
         }
         if (!flagOfPass && symbolTable.searchValue("g", symValue) == 0) {
-            symbolTable.insert("g", "N", symValue, "ilit", "int", "", "", "public");
+            symbolTable.insert("g", "N", symValue, "ilit", "int", "", "", "public", 0);
         }
         Token newToken = {T_Number, scanner.getToken().lineNumber, symValue};
         if (flagOfPass) sa_lPush(newToken);
@@ -444,7 +448,7 @@ public:
         }
         else if (scanner.getToken().type == T_Character) {
             if (!flagOfPass && symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
-                symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
+                symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public", 0);
             }
             if (flagOfPass) sa_lPush(scanner.getToken());
             scanner.fetchTokens();
@@ -480,7 +484,7 @@ public:
         }
         if (scanner.getToken().type == T_Character) {
             if (!flagOfPass && symbolTable.searchValue("g", scanner.getToken().lexeme) == 0) {
-                symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public");
+                symbolTable.insert("g", "H", scanner.getToken().lexeme, "clit", "char", "", "", "public", 0);
             }
             if (flagOfPass) sa_lPush(scanner.getToken());
             scanner.fetchTokens();
@@ -693,7 +697,7 @@ public:
             if (symbolTable.searchValue("g" + currentClass + currentMethod, paramName) != 0) {
                 semanticError(paramLine, "Duplicate variable " + paramName);
             }
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "P", paramName, "param", paramType, "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "P", paramName, "param", paramType, "", "", "private", 0);
             currentParam += ("P" + std::to_string(tempId));
         }
     }
@@ -713,7 +717,7 @@ public:
         if (scanner.getToken().lexeme == "(") {
             int tempId = 0;
             if (!flagOfPass) {
-                tempId = symbolTable.insert("g" + currentClass, "M", nameStr, "method", "", typeStr, "", modeStr);
+                tempId = symbolTable.insert("g" + currentClass, "M", nameStr, "method", "", typeStr, "", modeStr, 0);
             }
             currentMethod = "." + nameStr;
             currentParam = "";
@@ -730,8 +734,17 @@ public:
             if (!flagOfPass) {
                 symbolTable.updateParam(tempId, "[" + currentParam + "]");
             }
+            else {
+                currentMethodId = symbolTable.searchValue("g" + currentClass, nameStr);
+                if (currentMethodId == 0) unexpectedError("Cannot find function symID");
+                methodOffset = initialMethodOffset(currentMethodId);
+            }
             method_body(scanner);
             currentMethod = "";
+            if (flagOfPass) {
+                symbolTable.updateOffset(currentMethodId, methodOffset);
+                currentMethodId = 0;
+            }
         }
         else if (scanner.getToken().lexeme == "["
                  || scanner.getToken().lexeme == "="
@@ -748,7 +761,8 @@ public:
                 }
             }
             if (!flagOfPass) {
-                symbolTable.insert("g" + currentClass, "V", nameStr, "ivar", tempType, "", "", modeStr);
+                symbolTable.insert("g" + currentClass, "V", nameStr, "ivar", tempType, "", "", modeStr, classOffset);
+                classOffset += 4;
             }
             if (scanner.getToken().lexeme == "=") {
                 if (flagOfPass) sa_oPush(scanner.getToken());
@@ -781,7 +795,7 @@ public:
                         semanticError(scanner.getToken().lineNumber, "Duplicate variable " + nameStr);
                     }
                 }
-                tempId = symbolTable.insert("g" + currentClass, "X", nameStr, "Constructor", "", nameStr, "", "public");
+                tempId = symbolTable.insert("g" + currentClass, "X", nameStr, "Constructor", "", nameStr, "", "public", 0);
             }
             currentMethod = "." + nameStr;
             currentParam = "";
@@ -805,8 +819,17 @@ public:
             if (!flagOfPass) {
                 symbolTable.updateParam(tempId, "[" + currentParam + "]");
             }
+            else {
+                currentMethodId = symbolTable.searchValue("g" + currentClass, nameStr);
+                if (currentMethodId == 0) unexpectedError("Cannot find Constructor symID");
+                methodOffset = initialMethodOffset(currentMethodId);
+            }
             method_body(scanner);
             currentMethod = "";
+            if (flagOfPass) {
+                symbolTable.updateOffset(currentMethodId, methodOffset);
+                currentMethodId = 0;
+            }
         }
         else {
             syntaxError(scanner.getToken(), "constructor_declaration");
@@ -852,6 +875,8 @@ public:
     }
     
     void class_declaration(Scanner & scanner) {
+        classOffset = 0;
+        int classId = 0;
         if (scanner.getToken().lexeme == "class") {
             scanner.fetchTokens();
         }
@@ -864,7 +889,7 @@ public:
                     semanticError(scanner.getToken().lineNumber, "Duplicate class " + scanner.getToken().lexeme);
                 }
                 else {
-                    symbolTable.insert("g", "C", scanner.getToken().lexeme, "Class", "", "", "", "");
+                    classId = symbolTable.insert("g", "C", scanner.getToken().lexeme, "Class", "", "", "", "", 0);
                 }
             }
             currentClass = "." + scanner.getToken().lexeme;
@@ -884,6 +909,8 @@ public:
         }
         scanner.fetchTokens();  //comsume the closing "}"
         currentClass = "";
+        if (!flagOfPass)
+            symbolTable.updateOffset(classId, classOffset);
     }
     
     void variable_declaration(Scanner & scanner) {
@@ -920,7 +947,13 @@ public:
             }
         }
         if (!flagOfPass) {
-            symbolTable.insert("g" + currentClass + currentMethod, "L", nameStr, "lvar", typeStr, "", "", "private");
+            symbolTable.insert("g" + currentClass + currentMethod, "L", nameStr, "lvar", typeStr, "", "", "private", 0);
+        }
+        else {
+            int tempId = symbolTable.searchValue("g" + currentClass + currentMethod, nameStr);
+            if (tempId == 0) unexpectedError("Cannot find variable symID");
+            symbolTable.updateOffset(tempId, methodOffset);
+            methodOffset += 4;
         }
         if (scanner.getToken().lexeme == "=") {
             if (flagOfPass) sa_oPush(scanner.getToken());
@@ -970,7 +1003,12 @@ public:
         }
         if (scanner.getToken().lexeme == "main") {
             if (!flagOfPass) {
-                symbolTable.insert("g", "F", "main", "main", "", "void", "[]", "public");
+                symbolTable.insert("g", "F", "main", "main", "", "void", "[]", "public", 0);
+            }
+            else {
+                currentMethodId = symbolTable.searchValue("g", "main");
+                if (currentMethodId == 0) unexpectedError("Cannot find main function symID");
+                methodOffset = 12;
             }
             currentClass = ".main";
             scanner.fetchTokens();
@@ -992,6 +1030,23 @@ public:
         }
         method_body(scanner);
         currentClass = "";
+        if (flagOfPass) {
+            symbolTable.updateOffset(currentMethodId, methodOffset);
+            currentMethodId = 0;
+        }
+    }
+    
+    int initialMethodOffset(int methodId) {
+        int result = 12;
+        std::string paramStr = symbolTable.getParam(methodId);
+        if (paramStr.size() > 2) {
+            std::vector<std::string> paramList = split(paramStr.substr(1,paramStr.size() - 2), ',');
+            for (int i = 0; i < paramList.size(); i++) {
+                symbolTable.updateOffset(stoi(paramList[i].substr(1, paramList[i].size() - 1)), result);
+                result += 4;
+            }
+        }
+        return result;
     }
     
     void lexicalAnalysis() {
@@ -1014,11 +1069,10 @@ public:
         }
         else {
             flagOfPass = true;
-            symbolTable.insert("g", "Z", "true", "zlit", "bool", "", "", "public");
-            symbolTable.insert("g", "Z", "false", "zlit", "bool", "", "", "public");
-            symbolTable.insert("g", "Z", "null", "zlit", "null", "", "", "public");
+            symbolTable.insert("g", "Z", "true", "zlit", "bool", "", "", "public", 0);
+            symbolTable.insert("g", "Z", "false", "zlit", "bool", "", "", "public", 0);
+            symbolTable.insert("g", "Z", "null", "zlit", "null", "", "", "public", 0);
         }
-//        symbolTable.printAll();
     }
     
     void sa_iPush(Token token) {
@@ -1163,8 +1217,9 @@ public:
                     semanticError(SAS.top().lineNumber, "Function \""  + SAS.top().value + "\" not defined");
                 }
                 else {
-                    int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", symbolTable.getReturnType(tempId), "", "", "private");
-                    SAR newSAR = {newId, SAS.top().lineNumber, "ref_sar", SAS.top().value, "sa_rExist"};
+                    int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", symbolTable.getReturnType(tempId), "", "", "private", methodOffset);
+                    methodOffset += 4;
+                    SAR newSAR = {newId, SAS.top().lineNumber, "ref_sar", SAS.top().value, "sa_iExist"};
                     SAS.pop();
                     SAS.push(newSAR);
                 }
@@ -1183,7 +1238,8 @@ public:
             }
             if (tempId != 0 && symbolTable.getType(tempId).size() > 0 && symbolTable.getType(tempId)[0] == '@') {
                 //todo: use SAS.top().symID to find the index of array
-                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private");
+                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private", methodOffset);
+                methodOffset += 4;
                 SAR newSAR = {newId, SAS.top().lineNumber, "id_sar", symbolTable.getSymID(newId), "sa_iExist"};
                 SAS.pop();
                 SAS.push(newSAR);
@@ -1264,7 +1320,8 @@ public:
                 semanticError(topSAR.lineNumber, "Function \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
             else {
-                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", symbolTable.getReturnType(tempId), "", "", "private");
+                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", symbolTable.getReturnType(tempId), "", "", "private", methodOffset);
+                methodOffset += 4;
                 SAR newSAR = {newId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSAR.value, "sa_rExist"};
                 SAS.push(newSAR);
             }
@@ -1285,7 +1342,8 @@ public:
             }
             else {
                 //todo: use topSAR.symID to find the index of array
-                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private");
+                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private", methodOffset);
+                methodOffset += 4;
                 SAR newSAR = {newId, topSAR.lineNumber, "id_sar", symbolTable.getSymID(newId), "sa_rExist"};
                 SAS.push(newSAR);
             }
@@ -1586,7 +1644,8 @@ public:
             semanticError(typeSAR.lineNumber, "Constructor \""  + typeSAR.value + alSAR.value + "\" not defined");
         }
         else {
-            int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", typeSAR.value, "", "", "private");
+            int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", typeSAR.value, "", "", "private", methodOffset);
+            methodOffset += 4;
             SAR newSAR = {newId, typeSAR.lineNumber, "new_sar", typeSAR.value + alSAR.value, "sa_newObj"};
             SAS.push(newSAR);
         }
@@ -1605,7 +1664,8 @@ public:
         }
         
         if (typeSAR.value == "int" || typeSAR.value == "bool" || typeSAR.value == "char" || symbolTable.searchValue("g", typeSAR.value) != 0) {
-            int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "@:" + typeSAR.value, "", "", "private");
+            int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "@:" + typeSAR.value, "", "", "private", methodOffset);
+            methodOffset += 4;
             SAR newSAR = {newId, typeSAR.lineNumber, "new_sar", "", "sa_newArray"};
             SAS.push(newSAR);
         }
@@ -1833,7 +1893,8 @@ public:
         }
         if (symbolTable.getType(exp1.symID) == "int" && symbolTable.getType(exp2.symID) == "int") {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Add"};
             SAS.push(newSAR);
@@ -1864,7 +1925,8 @@ public:
         }
         if (symbolTable.getType(exp1.symID) == "int" && symbolTable.getType(exp2.symID) == "int") {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Subtract"};
             SAS.push(newSAR);
@@ -1895,7 +1957,8 @@ public:
         }
         if (symbolTable.getType(exp1.symID) == "int" && symbolTable.getType(exp2.symID) == "int") {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Multiply"};
             SAS.push(newSAR);
@@ -1926,7 +1989,8 @@ public:
         }
         if (symbolTable.getType(exp1.symID) == "int" && symbolTable.getType(exp2.symID) == "int") {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Divide"};
             SAS.push(newSAR);
@@ -1985,7 +2049,8 @@ public:
         if ((symbolTable.getType(exp1.symID) == "int" || symbolTable.getType(exp1.symID) == "char")
             && symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Less"};
             SAS.push(newSAR);
@@ -2017,7 +2082,8 @@ public:
         if ((symbolTable.getType(exp1.symID) == "int" || symbolTable.getType(exp1.symID) == "char")
             && symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Greater"};
             SAS.push(newSAR);
@@ -2048,7 +2114,8 @@ public:
         }
         if (symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Equal"};
             SAS.push(newSAR);
@@ -2081,7 +2148,8 @@ public:
         if ((symbolTable.getType(exp1.symID) == "int" || symbolTable.getType(exp1.symID) == "char")
             && symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_LessEqual"};
             SAS.push(newSAR);
@@ -2113,7 +2181,8 @@ public:
         if ((symbolTable.getType(exp1.symID) == "int" || symbolTable.getType(exp1.symID) == "char")
             && symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_GreaterEqual"};
             SAS.push(newSAR);
@@ -2145,7 +2214,8 @@ public:
         if (symbolTable.getType(exp1.symID) == "bool") {
             if (symbolTable.getType(exp2.symID) == "bool") {
                 OpStack.pop();
-                int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+                int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
+                methodOffset += 4;
                 symbolTable.updateName(tempId);
                 SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_And"};
                 SAS.push(newSAR);
@@ -2176,7 +2246,8 @@ public:
         if (symbolTable.getType(exp1.symID) == "bool") {
             if (symbolTable.getType(exp2.symID) == "bool") {
                 OpStack.pop();
-                int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+                int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
+                methodOffset += 4;
                 symbolTable.updateName(tempId);
                 SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Or"};
                 SAS.push(newSAR);
@@ -2206,7 +2277,8 @@ public:
         }
         if (symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
             OpStack.pop();
-            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private");
+            int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
+            methodOffset += 4;
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Less"};
             SAS.push(newSAR);
@@ -2230,6 +2302,7 @@ public:
         scanner.fetchTokens();  // fetch a token to nextToken
         scanner.fetchTokens();  // fetch a token to currentToken and nextToken
         compiliation_unit(scanner);
+        symbolTable.printAll();
         std::cout << "Semantic Check Passed\n";
     }
     
