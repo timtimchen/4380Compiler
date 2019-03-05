@@ -1167,6 +1167,12 @@ public:
     }
     
     void sa_thisPush(Token token) {
+        if (token.lexeme != "this") {
+            unexpectedError("Unexpected access function sa_thisPush");
+        }
+        if (currentClass == ".main") {
+            semanticError(token.lineNumber, "Variable \""  + token.lexeme + "\" not defined in \"main\"");
+        }
         SAR newSAR = {0, token.lineNumber, "this_sar", token.lexeme, "sa_thisPush"};
         SAS.push(newSAR);
     }
@@ -1271,8 +1277,9 @@ public:
         
         if (topSAR.reference == "id_sar") {
             int classID = 0;
-            if (nextSAR.value == "this")
+            if (nextSAR.value == "this") {
                 classID = symbolTable.searchValue("g", currentClass.substr(1));
+            }
             else
                 classID = symbolTable.getClassIDFromObject(nextSAR.symID);
             if (classID == 0) {
@@ -1290,8 +1297,9 @@ public:
         }
         else if (topSAR.reference == "func_sar") {
             int classID = 0;
-            if (nextSAR.value == "this")
+            if (nextSAR.value == "this") {
                 classID = symbolTable.searchValue("g", currentClass.substr(1));
+            }
             else
                 classID = symbolTable.getClassIDFromObject(nextSAR.symID);
             if (classID == 0) {
@@ -1436,7 +1444,7 @@ public:
         else {
             while (!OpStack.empty()) {
                 if (OpStack.top().value == "=") {
-                    sa_AssignmetOperator();
+                    sa_AssigmenttOperator();
                 }
                 else if (OpStack.top().value == "&&") {
                     sa_AndOperator();
@@ -1497,7 +1505,7 @@ public:
     void sa_cout(int lineNumber) {
         while (!OpStack.empty()) {
             if (OpStack.top().value == "=") {
-                sa_AssignmetOperator();
+                sa_AssigmenttOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1557,7 +1565,7 @@ public:
     void sa_cin(int lineNumber) {
         while (!OpStack.empty()) {
             if (OpStack.top().value == "=") {
-                sa_AssignmetOperator();
+                sa_AssigmenttOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1682,7 +1690,7 @@ public:
     void sa_ClosingParenthesis() {
         while (!OpStack.empty() && OpStack.top().value != "(") {
             if (OpStack.top().value == "=") {
-                sa_AssignmetOperator();
+                sa_AssigmenttOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1733,7 +1741,7 @@ public:
     void sa_ClosingBracket() {
         while (!OpStack.empty() && OpStack.top().value != "[") {
             if (OpStack.top().value == "=") {
-                sa_AssignmetOperator();
+                sa_AssigmenttOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1784,7 +1792,7 @@ public:
     void sa_Argument() {
         while (!OpStack.empty() && OpStack.top().value != "(") {
             if (OpStack.top().value == "=") {
-                sa_AssignmetOperator();
+                sa_AssigmenttOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1832,7 +1840,7 @@ public:
     void sa_EOE() {
         while (!OpStack.empty()) {
             if (OpStack.top().value == "=") {
-                sa_AssignmetOperator();
+                sa_AssigmenttOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -2005,7 +2013,7 @@ public:
         }
     }
     
-    void sa_AssignmetOperator() {
+    void sa_AssigmenttOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
             semanticError(0, "Unexpected Error in sa_AssignmetOperator");
@@ -2019,7 +2027,8 @@ public:
             exp1 = SAS.top();
             SAS.pop();
         }
-        if (isLValue(exp1.symID) && symbolTable.getType(exp1.symID) == symbolTable.getType(exp2.symID)) {
+        if (isLValue(exp1.symID) &&
+            (symbolTable.getType(exp1.symID) == symbolTable.getType(exp2.symID) || (symbolTable.getType(exp2.symID) == "null"))) {
             OpStack.pop();
         }
         else {
@@ -2302,7 +2311,7 @@ public:
         scanner.fetchTokens();  // fetch a token to nextToken
         scanner.fetchTokens();  // fetch a token to currentToken and nextToken
         compiliation_unit(scanner);
-        symbolTable.printAll();
+//        symbolTable.printAll();
         std::cout << "Semantic Check Passed\n";
     }
     

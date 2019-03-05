@@ -1,0 +1,117 @@
+class Cat {
+	public bool x;
+	
+	Cat(Mouse m) {
+		Dog x;
+		int i;
+		int ii[];
+		char c;
+		
+		ii[i] = i;
+		ii = ii;
+		//null = this;
+		//this = x;
+		//123 = 321;
+		//'c' = c;
+		
+		
+		return x.f1(3, this.x);
+	}
+	
+	public int f1(char a, int b) {
+		int y;
+		int f;
+		return (b - 7 * ( 6 + f) ) / y;
+	}
+	
+	public Mouse f2(int i) {
+		int temp[];
+		char c;
+		// i = temp;
+		cout << f1(c, i);
+		cout << temp[i] + i * 35;
+		cout << c;
+		//cin >> f1(c, i);
+		//cin >> temp[i] + i * 35;
+		//cin >> i;
+		cin >> temp[i];
+		cin >> c;
+	}
+}
+
+class Dog {
+	public bool y;	
+	
+	private int r;
+	
+	public Cat f1(int i, bool b) {}
+	
+	public char c[];
+
+	private void test(int y) {
+	char arr[];
+	
+ 		while (this.y) {
+ 		f1(r * 4, true);
+ 		(c [ r + 3 ]) = arr [ 5 - r ];
+ 		}
+ 		this.y = false;
+ 		
+ 		this.f1(y, this.y);
+		return;
+	}
+	
+}
+
+class Mouse {
+	private int f;
+	private int k;
+	private Cat cat;
+	public Dog dog;
+	public Mouse mouse;
+	public char j = 'a';
+	public char newline = '\n';
+	public Cat s = new Cat(mouse);
+	public Cat t[] = new Cat[k];
+	
+    Mouse() {
+    	return mouse;
+    }
+    
+    public Dog f3() {
+    }
+}
+
+void kxi2019 main() {
+	int x;	
+	int y;
+	int g;
+	int f;
+	int k;
+	Cat cat;
+	Dog dog;
+	Mouse mouse;
+	char j = 'a';
+	char newline = ('\n');
+	Cat s = new Cat(mouse);
+	Cat t[] = new Cat[k];
+
+	
+	if (j == 'b') g = y;
+	x = y * g + f / k ;
+//	f = g + x < y;
+	
+	cat.x = dog.y;
+	
+	x = (cat.f1(j,g) + g * y);
+	
+	cat.f2(g).f3().y = x != k;
+	
+	//dog.test(dog.r);
+	
+	(cat) = dog.f1( +7 + g * -233, x < y == false && true);
+	
+	 		//f1(4, true);
+
+	dog.c[(x - 7 * ( g + f) ) / y] = j;
+}
