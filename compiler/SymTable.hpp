@@ -14,9 +14,59 @@
 #include <string>
 #include <map>
 
+enum ICODEOP {
+    ADD,
+    ADI,
+    SUB,
+    MUL,
+    DIV,
+    LT,
+    GT,
+    NE,
+    EQ,
+    LE,
+    GE,
+    AND,
+    OR,
+    BF,
+    BT,
+    JMP,
+    PUSH,
+    POP,
+    PEEK,
+    FRAME,
+    CALL,
+    RTN,
+    RETURN,
+    FUNC,
+    NEWI,
+    NEW,
+    MOV,
+    MOVI,
+    WRITE,
+    READ,
+    WRTC,
+    WRTI,
+    RDC,
+    RDI,
+    REF,
+    AEF,
+    STOP
+};
+
+struct QUAD {
+    int lineNumber;
+    ICODEOP opcode;
+    std::string operand1;
+    std::string operand2;
+    std::string operand3;
+    std::string label;
+};
+
 class SymTable {
 private:
     int nextID = SYMID_START;
+    int nullID, trueID, falseID, charSizeID, intSizeID, mainID;
     std::map<int, std::string> symScope;
     std::map<int, std::string> symID;
     std::map<int, std::string> symValue;
@@ -26,7 +76,26 @@ private:
     std::map<int, std::string> symParam;
     std::map<int, std::string> symAccessMod;
     std::map<int, int> symOffset;
+    // for icode generator
+    int iCodeCounter = 0;
+    int labelCounter = 0;
+    std::vector<QUAD> quad;
+    std::vector<QUAD> sQuad;
+
 public:
+    SymTable() {
+        nullID = insert("g", "Z", "null", "zlit", "null", "", "", "public", 0);
+        trueID = insert("g", "Z", "true", "zlit", "bool", "", "", "public", 0);
+        falseID = insert("g", "Z", "false", "zlit", "bool", "", "", "public", 0);
+        charSizeID = insert("g", "N", "1", "ilit", "int", "", "", "public", 0);
+        intSizeID = insert("g", "N", "4", "ilit", "int", "", "", "public", 0);
+        mainID = insert("g", "F", "main", "main", "", "void", "[]", "public", 0);
+
+        iCode(0, FRAME, getSymID(mainID), getSymID(nullID), "", "");
+        iCode(0, CALL, getSymID(mainID), "", "", "");
+        iCode(0, STOP, "", "", "", "");
+    }
+    
     int insert(std::string scope,
                 std::string idType,
                 std::string value,
@@ -148,6 +217,190 @@ public:
             std::cout << std::endl;
         }
     }
+    
+    // icode generator
+    void iCode(int line, ICODEOP op, std::string opr1, std::string opr2, std::string opr3, std::string lbl) {
+        iCodeCounter++;
+        if (iCodeCounter > quad.size()) {
+            QUAD newQuad = {line, op, opr1, opr2, opr3, lbl};
+            quad.push_back(newQuad);
+        }
+        else {
+            
+        }
+    }
+    
+    std::string getICodeOpStr(ICODEOP iCodeOp) {
+        switch (iCodeOp) {
+            case ADD:
+                return "ADD   ";
+                break;
+                
+            case ADI:
+                return "ADI   ";
+                break;
+                
+            case SUB:
+                return "SUB   ";
+                break;
+                
+            case MUL:
+                return "MUL   ";
+                break;
+                
+            case DIV:
+                return "DIV   ";
+                break;
+                
+            case LT:
+                return "LT    ";
+                break;
+                
+            case GT:
+                return "GT    ";
+                break;
+                
+            case NE:
+                return "NE    ";
+                break;
+                
+            case EQ:
+                return "EQ    ";
+                break;
+                
+            case LE:
+                return "LE    ";
+                break;
+                
+            case GE:
+                return "GE    ";
+                break;
+                
+            case AND:
+                return "AND   ";
+                break;
+                
+            case OR:
+                return "OR    ";
+                break;
+                
+            case BF:
+                return "BF    ";
+                break;
+                
+            case BT:
+                return "BT    ";
+                break;
+                
+            case JMP:
+                return "JMP   ";
+                break;
+                
+            case PUSH:
+                return "PUSH  ";
+                break;
+                
+            case POP:
+                return "POP   ";
+                break;
+                
+            case PEEK:
+                return "PEEK  ";
+                break;
+                
+            case FRAME:
+                return "FRAME ";
+                break;
+                
+            case CALL:
+                return "CALL  ";
+                break;
+                
+            case RTN:
+                return "RTN   ";
+                break;
+                
+            case RETURN:
+                return "RETURN";
+                break;
+                
+            case FUNC:
+                return "FUNC  ";
+                break;
+                
+            case NEWI:
+                return "NEWI  ";
+                break;
+                
+            case NEW:
+                return "NEW   ";
+                break;
+                
+            case MOV:
+                return "MOV   ";
+                break;
+                
+            case MOVI:
+                return "MOVI  ";
+                break;
+                
+            case WRITE:
+                return "WRITE ";
+                break;
+                
+            case READ:
+                return "READ  ";
+                break;
+                
+            case WRTC:
+                return "WRTC  ";
+                break;
+                
+            case WRTI:
+                return "WRTI  ";
+                break;
+                
+            case RDC:
+                return "RDC   ";
+                break;
+                
+            case RDI:
+                return "RDI   ";
+                break;
+                
+            case REF:
+                return "REF   ";
+                break;
+                
+            case AEF:
+                return "AEF   ";
+                break;
+                
+            case STOP:
+                return "STOP  ";
+                break;
+                
+            default:
+                return "";
+                break;
+        }
+    }
+    
+    void printICode() {
+        for (int i = 0; i < quad.size(); i++) {
+            std::cout << quad[i].lineNumber << ":\t";
+            if (quad[i].label.size() == 0)
+                std::cout << "        \t";
+            else
+                std::cout << quad[i].label << "\t";
+            std::cout << getICodeOpStr(quad[i].opcode) << "\t";
+            std::cout << quad[i].operand1 << "\t";
+            std::cout << quad[i].operand2 << "\t";
+            std::cout << quad[i].operand3 << "\t";
+            std::cout << std::endl;
+        }
+    }
+
 };
 
 #endif /* SymTable_h */

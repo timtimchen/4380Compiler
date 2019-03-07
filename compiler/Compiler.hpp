@@ -1002,10 +1002,7 @@ public:
             syntaxError(scanner.getToken(), "kxi2019");
         }
         if (scanner.getToken().lexeme == "main") {
-            if (!flagOfPass) {
-                symbolTable.insert("g", "F", "main", "main", "", "void", "[]", "public", 0);
-            }
-            else {
+            if (flagOfPass) {
                 currentMethodId = symbolTable.searchValue("g", "main");
                 if (currentMethodId == 0) unexpectedError("Cannot find main function symID");
                 methodOffset = 12;
@@ -1069,9 +1066,6 @@ public:
         }
         else {
             flagOfPass = true;
-            symbolTable.insert("g", "Z", "true", "zlit", "bool", "", "", "public", 0);
-            symbolTable.insert("g", "Z", "false", "zlit", "bool", "", "", "public", 0);
-            symbolTable.insert("g", "Z", "null", "zlit", "null", "", "", "public", 0);
         }
     }
     
@@ -2030,6 +2024,8 @@ public:
         if (isLValue(exp1.symID) &&
             (symbolTable.getType(exp1.symID) == symbolTable.getType(exp2.symID) || (symbolTable.getType(exp2.symID) == "null"))) {
             OpStack.pop();
+            
+            symbolTable.iCode(exp1.lineNumber, MOV, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), "", "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -2312,13 +2308,14 @@ public:
         scanner.fetchTokens();  // fetch a token to currentToken and nextToken
         compiliation_unit(scanner);
 //        symbolTable.printAll();
-        std::cout << "Semantic Check Passed\n";
     }
     
     void run() {
 //        lexicalAnalysis();
         syntaxAnalysis();
         semanticAnalysis();
+//        std::cout << "Semantic Check Passed\n";
+        symbolTable.printICode();
     }
 };
 
