@@ -1,6 +1,18 @@
 void kxi2019 main() {
-	int x;
-	int y; 		
-	x = y;
-	y = +4;
+	int x = 7;	
+	int y;
+	int g;
+	int f;
+	int k;
+//	Cat cat;
+//	Dog dog;
+//	Mouse mouse;
+	char j = 'a';
+	char newline = ('\n');
+//	Cat s = new Cat(mouse);
+//	Cat t[] = new Cat[k];
+
+	
+	if (j == 'b') g = y;
+	x = y * g + f / k ;
 }

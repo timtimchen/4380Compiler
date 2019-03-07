@@ -11,6 +11,7 @@
 #define SYMID_START 100
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <map>
 
@@ -388,7 +389,7 @@ public:
     
     void printICode() {
         for (int i = 0; i < quad.size(); i++) {
-            std::cout << quad[i].lineNumber << ":\t";
+            std::cout << "  " << quad[i].lineNumber << ":\t";
             if (quad[i].label.size() == 0)
                 std::cout << "        \t";
             else
@@ -400,7 +401,24 @@ public:
             std::cout << std::endl;
         }
     }
-
+    
+    void generateTCode() {
+        std::ofstream targetFile;
+        targetFile.open ("out.kxi", std::ios::out | std::ios::trunc);
+        for (int i = 0; i < quad.size(); i++) {
+            targetFile << "  " << quad[i].lineNumber << ":\t";
+            if (quad[i].label.size() == 0)
+                targetFile << "        \t";
+            else
+                targetFile << quad[i].label << "\t";
+            targetFile << getICodeOpStr(quad[i].opcode) << "\t";
+            targetFile << quad[i].operand1 << "\t";
+            targetFile << quad[i].operand2 << "\t";
+            targetFile << quad[i].operand3 << "\t";
+            targetFile << "\n";
+        }
+        targetFile.close();
+    }
 };
 
 #endif /* SymTable_h */

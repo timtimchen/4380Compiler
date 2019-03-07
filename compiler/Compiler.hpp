@@ -1900,6 +1900,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Add"};
             SAS.push(newSAR);
+
+            symbolTable.iCode(exp1.lineNumber, ADD, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -1932,6 +1934,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Subtract"};
             SAS.push(newSAR);
+ 
+            symbolTable.iCode(exp1.lineNumber, SUB, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -1964,6 +1968,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Multiply"};
             SAS.push(newSAR);
+            
+            symbolTable.iCode(exp1.lineNumber, MUL, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -1996,6 +2002,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Divide"};
             SAS.push(newSAR);
+            
+            symbolTable.iCode(exp1.lineNumber, DIV, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -2025,7 +2033,7 @@ public:
             (symbolTable.getType(exp1.symID) == symbolTable.getType(exp2.symID) || (symbolTable.getType(exp2.symID) == "null"))) {
             OpStack.pop();
             
-            symbolTable.iCode(exp1.lineNumber, MOV, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), "", "");
+            symbolTable.iCode(exp1.lineNumber, MOV, symbolTable.getSymID(exp2.symID), symbolTable.getSymID(exp1.symID), "", "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -2059,6 +2067,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Less"};
             SAS.push(newSAR);
+            
+            symbolTable.iCode(exp1.lineNumber, LT, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -2092,6 +2102,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Greater"};
             SAS.push(newSAR);
+            
+            symbolTable.iCode(exp1.lineNumber, GT, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -2124,6 +2136,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Equal"};
             SAS.push(newSAR);
+            
+            symbolTable.iCode(exp1.lineNumber, EQ, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -2158,6 +2172,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_LessEqual"};
             SAS.push(newSAR);
+            
+            symbolTable.iCode(exp1.lineNumber, LE, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -2191,6 +2207,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_GreaterEqual"};
             SAS.push(newSAR);
+            
+            symbolTable.iCode(exp1.lineNumber, GE, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -2224,6 +2242,8 @@ public:
                 symbolTable.updateName(tempId);
                 SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_And"};
                 SAS.push(newSAR);
+                
+                symbolTable.iCode(exp1.lineNumber, AND, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
             }
             else {
                 semanticError(exp2.lineNumber, "And requires bool found " + symbolTable.getType(exp2.symID));
@@ -2256,6 +2276,8 @@ public:
                 symbolTable.updateName(tempId);
                 SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Or"};
                 SAS.push(newSAR);
+                
+                symbolTable.iCode(exp1.lineNumber, OR, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
             }
             else {
                 semanticError(exp2.lineNumber, "Or requires bool found " + symbolTable.getType(exp2.symID));
@@ -2287,6 +2309,8 @@ public:
             symbolTable.updateName(tempId);
             SAR newSAR = {tempId, exp1.lineNumber, "tvar_sar", symbolTable.getValue(tempId), "sa_Less"};
             SAS.push(newSAR);
+            
+            symbolTable.iCode(exp1.lineNumber, NE, symbolTable.getSymID(exp1.symID), symbolTable.getSymID(exp2.symID), symbolTable.getSymID(tempId), "");
         }
         else {
             semanticError(exp2.lineNumber,
@@ -2307,15 +2331,16 @@ public:
         scanner.fetchTokens();  // fetch a token to nextToken
         scanner.fetchTokens();  // fetch a token to currentToken and nextToken
         compiliation_unit(scanner);
-//        symbolTable.printAll();
+//        std::cout << "Semantic Check Passed\n";
     }
     
     void run() {
 //        lexicalAnalysis();
         syntaxAnalysis();
         semanticAnalysis();
-//        std::cout << "Semantic Check Passed\n";
+//        symbolTable.printAll();
         symbolTable.printICode();
+//        symbolTable.generateTCode();
     }
 };
 
