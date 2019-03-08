@@ -1,18 +1,49 @@
+class Cat {
+	public int x;
+}
+
+class Dog {
+	public int y;	
+}
+
+
+class Mouse {
+	public Cat a;
+	public Dog b;	
+}
+
 void kxi2019 main() {
 	int x = 7;	
 	int y;
 	int g;
 	int f;
 	int k;
-//	Cat cat;
-//	Dog dog;
-//	Mouse mouse;
+	Cat cat;
+	Dog dog;
+	Mouse m1;
+	Mouse m2;
 	char j = 'a';
-	char newline = ('\n');
+//	char newline = ('\n');
 //	Cat s = new Cat(mouse);
 //	Cat t[] = new Cat[k];
-
 	
-	if (j == 'b') g = y;
+	if (j == 'b') {
+		cat.x = dog.y;
+	}
+	else if (x == y) {
+		m1.a.x = m2.b.y;
+	}
+	else
+		x = 1;
+	while (7 == 3) {
+		while (true) 
+			j = 'a';
+		x + 1;
+	}
+	while (false) {
+		m1 = m2;
+	}
+		
+//	if (j == 'b') g = y;
 	x = y * g + f / k ;
 }

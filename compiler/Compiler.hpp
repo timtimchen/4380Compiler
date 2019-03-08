@@ -523,6 +523,10 @@ public:
     }
     
     void statement(Scanner & scanner) {
+        std::string labelENDIF = "";
+        std::string labelSKIPELSE = "";
+        std::string labelBEGIN = "";
+        std::string labelENDWHILE = "";
         if (scanner.getToken().lexeme == "{") {
             scanner.fetchTokens();
             while (scanner.getToken().lexeme != "}") {
@@ -543,7 +547,10 @@ public:
             if (scanner.getToken().lexeme == ")") {
                 if (flagOfPass) {
                     sa_ClosingParenthesis();
-                    sa_if();
+                    int labelCnt = symbolTable.getNewLabelCount();
+                    labelENDIF = "SKIPIF" + std::to_string(labelCnt);
+                    labelSKIPELSE = "SKIPELSE" + std::to_string(labelCnt);
+                    sa_if(labelENDIF);
                 }
                 scanner.fetchTokens();
             }
@@ -552,9 +559,15 @@ public:
             }
             statement(scanner);
             if (scanner.getToken().lexeme == "else") {
+                if (flagOfPass) {
+                    symbolTable.iCode(scanner.getToken().lineNumber, JMP, labelSKIPELSE, "", "", "");
+                    symbolTable.iCodeLabel(labelENDIF);
+                    labelENDIF = labelSKIPELSE;
+                }
                 scanner.fetchTokens();
                 statement(scanner);
             }
+            if (flagOfPass) symbolTable.iCodeLabel(labelENDIF);
         }
         else if (scanner.getToken().lexeme == "while") {
             scanner.fetchTokens();
@@ -568,8 +581,12 @@ public:
             expression(scanner);
             if (scanner.getToken().lexeme == ")") {
                 if (flagOfPass) {
+                    int labelCnt = symbolTable.getNewLabelCount();
+                    labelBEGIN = "BEGIN" + std::to_string(labelCnt);
+                    labelENDWHILE = "ENDWHILE" + std::to_string(labelCnt);
+                    symbolTable.iCodeLabel(labelBEGIN);
                     sa_ClosingParenthesis();
-                    sa_while();
+                    sa_while(labelENDWHILE);
                 }
                 scanner.fetchTokens();
             }
@@ -577,6 +594,10 @@ public:
                 syntaxError(scanner.getToken(), ")");
             }
             statement(scanner);
+            if (flagOfPass) {
+                symbolTable.iCode(scanner.getToken().lineNumber, JMP, labelBEGIN, "", "", "");
+                symbolTable.iCodeLabel(labelENDWHILE);
+            }
         }
         else if (scanner.getToken().lexeme == "return") {
             scanner.fetchTokens();
@@ -1285,8 +1306,12 @@ public:
                 semanticError(topSAR.lineNumber, "Variable \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
             else {
-                SAR newSAR = {tempId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSAR.value, "sa_rExist"};
+                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId), "", "", "private", methodOffset);
+                methodOffset += 4;
+                SAR newSAR = {newId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSAR.value, "sa_rExist"};
                 SAS.push(newSAR);
+
+                symbolTable.iCode(nextSAR.lineNumber, REF, symbolTable.getSymID(nextSAR.symID), symbolTable.getSymID(tempId), symbolTable.getSymID(newId), "");
             }
         }
         else if (topSAR.reference == "func_sar") {
@@ -1412,18 +1437,20 @@ public:
         SAS.push(newSAR);
     }
     
-    void sa_if() {
+    void sa_if(std::string label) {
         if (SAS.empty()) unexpectedError("Unexpected Error: SAS empty in sa_if()");
         if (symbolTable.getType(SAS.top().symID) == "bool") {
+            symbolTable.iCode(SAS.top().lineNumber, BF, symbolTable.getSymID(SAS.top().symID), label, "", "");
             SAS.pop();
         }
         else
             semanticError(SAS.top().lineNumber, "'if' requires 'bool' got \'" + symbolTable.getType(SAS.top().symID) + "\'");
     }
     
-    void sa_while() {
-        if (SAS.empty()) unexpectedError("Unexpected Error: SAS empty in sa_if()");
+    void sa_while(std::string label) {
+        if (SAS.empty()) unexpectedError("Unexpected Error: SAS empty in sa_while()");
         if (symbolTable.getType(SAS.top().symID) == "bool") {
+            symbolTable.iCode(SAS.top().lineNumber, BF, symbolTable.getSymID(SAS.top().symID), label, "", "");
             SAS.pop();
         }
         else
@@ -1438,7 +1465,7 @@ public:
         else {
             while (!OpStack.empty()) {
                 if (OpStack.top().value == "=") {
-                    sa_AssigmenttOperator();
+                    sa_AssigmentOperator();
                 }
                 else if (OpStack.top().value == "&&") {
                     sa_AndOperator();
@@ -1499,7 +1526,7 @@ public:
     void sa_cout(int lineNumber) {
         while (!OpStack.empty()) {
             if (OpStack.top().value == "=") {
-                sa_AssigmenttOperator();
+                sa_AssigmentOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1559,7 +1586,7 @@ public:
     void sa_cin(int lineNumber) {
         while (!OpStack.empty()) {
             if (OpStack.top().value == "=") {
-                sa_AssigmenttOperator();
+                sa_AssigmentOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1684,7 +1711,7 @@ public:
     void sa_ClosingParenthesis() {
         while (!OpStack.empty() && OpStack.top().value != "(") {
             if (OpStack.top().value == "=") {
-                sa_AssigmenttOperator();
+                sa_AssigmentOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1735,7 +1762,7 @@ public:
     void sa_ClosingBracket() {
         while (!OpStack.empty() && OpStack.top().value != "[") {
             if (OpStack.top().value == "=") {
-                sa_AssigmenttOperator();
+                sa_AssigmentOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1786,7 +1813,7 @@ public:
     void sa_Argument() {
         while (!OpStack.empty() && OpStack.top().value != "(") {
             if (OpStack.top().value == "=") {
-                sa_AssigmenttOperator();
+                sa_AssigmentOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -1834,7 +1861,7 @@ public:
     void sa_EOE() {
         while (!OpStack.empty()) {
             if (OpStack.top().value == "=") {
-                sa_AssigmenttOperator();
+                sa_AssigmentOperator();
             }
             else if (OpStack.top().value == "&&") {
                 sa_AndOperator();
@@ -2015,7 +2042,7 @@ public:
         }
     }
     
-    void sa_AssigmenttOperator() {
+    void sa_AssigmentOperator() {
         SAR exp1, exp2;
         if (SAS.empty())
             semanticError(0, "Unexpected Error in sa_AssignmetOperator");

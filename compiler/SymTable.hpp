@@ -52,7 +52,8 @@ enum ICODEOP {
     RDI,
     REF,
     AEF,
-    STOP
+    STOP,
+    NOP
 };
 
 struct QUAD {
@@ -227,8 +228,43 @@ public:
             quad.push_back(newQuad);
         }
         else {
-            
+            quad[quad.size() - 1].lineNumber = line;
+            quad[quad.size() - 1].opcode = op;
+            quad[quad.size() - 1].operand1 = opr1;
+            quad[quad.size() - 1].operand2 = opr2;
+            quad[quad.size() - 1].operand3 = opr3;
+            if (lbl.size() > 0) {
+                backPatching(quad[quad.size() - 1].label, lbl);
+                quad[quad.size() - 1].label = lbl;
+            }
         }
+    }
+    
+    void iCodeLabel(std::string lbl) {
+        if (iCodeCounter + 1 > quad.size()) {
+            QUAD newQuad = {0, NOP, "", "", "", lbl};
+            quad.push_back(newQuad);
+        }
+        else {
+            backPatching(quad[quad.size() - 1].label, lbl);
+            quad[quad.size() - 1].label = lbl;
+        }
+    }
+    
+    void backPatching(std::string findLabel, std::string replaceLabel) {
+        for (int i = 0; i < quad.size(); i++) {
+            if (quad[i].opcode == JMP && quad[i].operand1 == findLabel)
+                quad[i].operand1 = replaceLabel;
+            else if (quad[i].opcode == BF && quad[i].operand2 == findLabel)
+                quad[i].operand2 = replaceLabel;
+            else if (quad[i].opcode == BT && quad[i].operand2 == findLabel)
+                quad[i].operand2 = replaceLabel;
+        }
+    }
+    
+    int getNewLabelCount() {
+        labelCounter++;
+        return labelCounter;
     }
     
     std::string getICodeOpStr(ICODEOP iCodeOp) {
