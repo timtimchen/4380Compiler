@@ -758,6 +758,7 @@ public:
             else {
                 currentMethodId = symbolTable.searchValue("g" + currentClass, nameStr);
                 if (currentMethodId == 0) unexpectedError("Cannot find function symID");
+                symbolTable.iCode(scanner.getToken().lineNumber, FUNC, symbolTable.getSymID(currentMethodId), "", "", symbolTable.getSymID(currentMethodId));
                 methodOffset = initialMethodOffset(currentMethodId);
             }
             method_body(scanner);
@@ -843,6 +844,7 @@ public:
             else {
                 currentMethodId = symbolTable.searchValue("g" + currentClass, nameStr);
                 if (currentMethodId == 0) unexpectedError("Cannot find Constructor symID");
+                symbolTable.iCode(scanner.getToken().lineNumber, FUNC, symbolTable.getSymID(currentMethodId), "", "", symbolTable.getSymID(currentMethodId));
                 methodOffset = initialMethodOffset(currentMethodId);
             }
             method_body(scanner);
@@ -1003,6 +1005,7 @@ public:
         while (scanner.getToken().lexeme != "}") {
             statement(scanner);
         }
+        if (flagOfPass) symbolTable.iCode(scanner.getToken().lineNumber, RTN, "", "", "", "");
         scanner.fetchTokens();  //consume the closing "}"
     }
 
@@ -1024,11 +1027,13 @@ public:
         }
         if (scanner.getToken().lexeme == "main") {
             if (flagOfPass) {
-                currentMethodId = symbolTable.searchValue("g", "main");
+                currentMethodId = symbolTable.searchValue("g.main", "main");
                 if (currentMethodId == 0) unexpectedError("Cannot find main function symID");
+                symbolTable.iCode(scanner.getToken().lineNumber, FUNC, symbolTable.getSymID(currentMethodId), "", "", symbolTable.getSymID(currentMethodId));
                 methodOffset = 12;
             }
             currentClass = ".main";
+            currentMethod = ".main";
             scanner.fetchTokens();
         }
         else {
@@ -1048,6 +1053,7 @@ public:
         }
         method_body(scanner);
         currentClass = "";
+        currentMethod = "";
         if (flagOfPass) {
             symbolTable.updateOffset(currentMethodId, methodOffset);
             currentMethodId = 0;
@@ -1332,10 +1338,11 @@ public:
             }
             std::string funcSignature = symbolTable.getValue(tempId);
             std::string paramStr = symbolTable.getParam(tempId);
+            std::vector<std::string> paramList;
             if (paramStr.size() <= 2)
                 funcSignature += "()";
             else {
-                std::vector<std::string> paramList = split(paramStr.substr(1,paramStr.size() - 2), ',');
+                paramList = split(paramStr.substr(1,paramStr.size() - 2), ',');
                 funcSignature += "(";
                 for (int i = 0; i < paramList.size(); i++) {
                     funcSignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
@@ -1351,6 +1358,15 @@ public:
                 methodOffset += 4;
                 SAR newSAR = {newId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSAR.value, "sa_rExist"};
                 SAS.push(newSAR);
+
+                symbolTable.iCode(nextSAR.lineNumber, FRAME, symbolTable.getSymID(tempId), symbolTable.getSymID(nextSAR.symID), "", "");
+                for (int i = 0; i < paramList.size(); i++) {
+                    symbolTable.iCode(nextSAR.lineNumber, PUSH, paramList[i], "", "", "");
+                }
+                symbolTable.iCode(nextSAR.lineNumber, CALL, symbolTable.getSymID(tempId), "", "", "");
+                if (symbolTable.getReturnType(tempId) != "void") {
+                    symbolTable.iCode(nextSAR.lineNumber, PEEK, symbolTable.getSymID(newId), "", "", "");
+                }
             }
         }
         else if (topSAR.reference == "arr_sar") {
@@ -1510,16 +1526,16 @@ public:
             std::string expressionType;
             if (SAS.empty()) {
                 expressionType = "void";
+                symbolTable.iCode(lineNumber, RTN, "", "", "", "");
             }
             else {
                 expressionType = symbolTable.getType(SAS.top().symID);
+                symbolTable.iCode(lineNumber, RETURN, symbolTable.getSymID(SAS.top().symID), "", "", "");
+            }
+            if (expressionType != symbolTable.getReturnType(tempId)) {
+                semanticError(lineNumber, "Function requires \"" + symbolTable.getReturnType(tempId) + "\" returned \"" + expressionType + "\"");
             }
             while (!SAS.empty()) SAS.pop();
-            if (expressionType == symbolTable.getReturnType(tempId)) {
-                //todo return a value;
-            }
-            else
-                semanticError(lineNumber, "Function requires \"" + symbolTable.getReturnType(tempId) + "\" returned \"" + expressionType + "\"");
         }
     }
     
@@ -1575,8 +1591,14 @@ public:
         else {
             expressionType = symbolTable.getType(SAS.top().symID);
         }
-        if (expressionType == "char" || expressionType == "int") {
-            //todo cout
+        if (expressionType == "char") {
+            symbolTable.iCode(SAS.top().lineNumber, WRTC, symbolTable.getSymID(SAS.top().symID), "", "", "");
+        }
+        else if (expressionType == "int") {
+            symbolTable.iCode(SAS.top().lineNumber, WRTI, symbolTable.getSymID(SAS.top().symID), "", "", "");
+        }
+        else if (expressionType == "bool") {
+            symbolTable.iCode(SAS.top().lineNumber, WRITE, symbolTable.getSymID(SAS.top().symID), "", "", "");
         }
         else
             semanticError(lineNumber, "cout not defined for " + expressionType);
@@ -1637,7 +1659,12 @@ public:
         }
         if ((expressionType == "char" || expressionType == "int") &&
             !SAS.empty() && isLValue(SAS.top().symID)) {
-            //todo cin
+            if (expressionType == "char") {
+                symbolTable.iCode(SAS.top().lineNumber, RDC, symbolTable.getSymID(SAS.top().symID), "", "", "");
+            }
+            else if (expressionType == "int") {
+                symbolTable.iCode(SAS.top().lineNumber, RDI, symbolTable.getSymID(SAS.top().symID), "", "", "");
+            }
         }
         else
             semanticError(lineNumber, "cin not defined for " + expressionType);

@@ -91,7 +91,7 @@ public:
         falseID = insert("g", "Z", "false", "zlit", "bool", "", "", "public", 0);
         charSizeID = insert("g", "N", "1", "ilit", "int", "", "", "public", 0);
         intSizeID = insert("g", "N", "4", "ilit", "int", "", "", "public", 0);
-        mainID = insert("g", "F", "main", "main", "", "void", "[]", "public", 0);
+        mainID = insert("g.main", "F", "main", "main", "", "void", "[]", "public", 0);
 
         iCode(0, FRAME, getSymID(mainID), getSymID(nullID), "", "");
         iCode(0, CALL, getSymID(mainID), "", "", "");
@@ -440,7 +440,7 @@ public:
     
     void generateTCode() {
         std::ofstream targetFile;
-        targetFile.open ("out.kxi", std::ios::out | std::ios::trunc);
+        targetFile.open ("out.asm", std::ios::out | std::ios::trunc);
         for (int i = 0; i < quad.size(); i++) {
             targetFile << "  " << quad[i].lineNumber << ":\t";
             if (quad[i].label.size() == 0)

@@ -1,5 +1,6 @@
 class Cat {
 	public int x;
+	public int f(int a, int b) {}
 }
 
 class Dog {
@@ -26,6 +27,13 @@ void kxi2019 main() {
 //	char newline = ('\n');
 //	Cat s = new Cat(mouse);
 //	Cat t[] = new Cat[k];
+	
+	
+	x = cat . f( k , g ) + g * f ;
+	
+	cout << x + y / k;
+	return;
+	cin >> j;
 	
 	if (j == 'b') {
 		cat.x = dog.y;
