@@ -1,14 +1,18 @@
 class Cat {
 	public int x;
+	public int ii[];
 	public int f(int i, bool b) {
+		ii[i + 3] = i;
 	}
 	
-	private void g() {
+	public Dog g() {
 		int r;
 		int g;
 		int k;
 		f ( r * 3 , g< k ) ;
 	}
+	
+	Cat(Mouse m) {}
 }
 
 class Dog {
@@ -19,6 +23,7 @@ class Dog {
 class Mouse {
 	public Cat a;
 	public Dog b;	
+	public Cat h() {}
 }
 
 void kxi2019 main() {
@@ -32,11 +37,10 @@ void kxi2019 main() {
 	Mouse m1;
 	Mouse m2;
 	char j = 'a';
-//	char newline = ('\n');
-//	Cat s = new Cat(mouse);
+	Cat s = new Cat(mouse);
 //	Cat t[] = new Cat[k];
 	
-	
+	cat.ii[5] = k;
 	x = cat . f( k , g < k ) + g * f ;
 	
 	cout << x + y / k;
@@ -60,6 +64,6 @@ void kxi2019 main() {
 		m1 = m2;
 	}
 		
-//	if (j == 'b') g = y;
+	m1.h().g().y = x;
 	x = y * g + f / k ;
 }

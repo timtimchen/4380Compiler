@@ -1289,10 +1289,11 @@ public:
                 currentPath = currentPath.substr(0, currentPath.find_last_of('.'));
             }
             if (tempId != 0 && symbolTable.getType(tempId).size() > 0 && symbolTable.getType(tempId)[0] == '@') {
-                //todo: use SAS.top().symID to find the index of array
                 int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private", methodOffset);
                 methodOffset += 4;
                 SAR newSAR = {newId, SAS.top().lineNumber, "id_sar", symbolTable.getSymID(newId), "sa_iExist"};
+                //use SAS.top().symID to find the index of array
+                symbolTable.iCode(SAS.top().lineNumber, AEF, symbolTable.getSymID(tempId), symbolTable.getSymID(SAS.top().symID), symbolTable.getSymID(newId), "");
                 SAS.pop();
                 SAS.push(newSAR);
             }
@@ -1423,11 +1424,16 @@ public:
                 semanticError(topSAR.lineNumber, "Array \"" + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
             else {
-                //todo: use topSAR.symID to find the index of array
+                int refId = symbolTable.insert("g" + currentClass + currentMethod, "R", "", "tvar", symbolTable.getType(tempId), "", "", "private", methodOffset);
+                methodOffset += 4;
                 int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private", methodOffset);
                 methodOffset += 4;
                 SAR newSAR = {newId, topSAR.lineNumber, "id_sar", symbolTable.getSymID(newId), "sa_rExist"};
                 SAS.push(newSAR);
+                
+                symbolTable.iCode(nextSAR.lineNumber, REF, symbolTable.getSymID(nextSAR.symID), symbolTable.getSymID(tempId), symbolTable.getSymID(refId), "");
+                //use topSAR.symID to find the index of array
+                symbolTable.iCode(nextSAR.lineNumber, AEF, symbolTable.getSymID(refId), symbolTable.getSymID(topSAR.symID), symbolTable.getSymID(newId), "");
             }
         }
         else
@@ -1483,7 +1489,7 @@ public:
         if (SAS.empty()) unexpectedError("SAS is empty -- #sa_arr");
         SAR idSAR = SAS.top();
         SAS.pop();
-\
+
         if (symbolTable.getType(arrIndex.symID) != "int") {
             semanticError(idSAR.lineNumber, "Array requires int index got " + symbolTable.getType(arrIndex.symID));
         }
@@ -1724,6 +1730,8 @@ public:
         }
         std::string funcSignature = typeSAR.value;
         std::string paramStr = symbolTable.getParam(tempId);
+        
+        // todo: change the parameter calculation
         if (paramStr.size() <= 2)
             funcSignature += "()";
         else {
