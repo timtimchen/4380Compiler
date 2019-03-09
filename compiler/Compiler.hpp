@@ -1219,8 +1219,9 @@ public:
         }
         else if (SAS.top().reference == "func_sar") {
             int tempId = 0;
+            SAR topSAR = SAS.top();
             std::string currentPath = "g" + currentClass + currentMethod;
-            std::string funcName = SAS.top().value.substr(0, SAS.top().value.find_first_of('('));
+            std::string funcName = topSAR.value.substr(0, topSAR.value.find_first_of('('));
             while (currentPath != "g") {
                 tempId = symbolTable.searchValue(currentPath, funcName);
                 if (tempId != 0) break;
@@ -1232,23 +1233,47 @@ public:
                 if (paramStr.size() <= 2)
                     funcSignature += "()";
                 else {
-                    std::vector<std::string> paramList = split(paramStr.substr(1,paramStr.size() - 2), ',');
+                    std::vector<std::string> pList = split(paramStr.substr(1,paramStr.size() - 2), ',');
                     funcSignature += "(";
-                    for (int i = 0; i < paramList.size(); i++) {
-                        funcSignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
+                    for (int i = 0; i < pList.size(); i++) {
+                        funcSignature += symbolTable.getType(stoi(pList[i].substr(1, pList[i].size() - 1)));
                         funcSignature += ",";
                     }
                     funcSignature[funcSignature.size() - 1] = ')';
                 }
-                if (SAS.top().value != funcSignature) {
-                    semanticError(SAS.top().lineNumber, "Function \""  + SAS.top().value + "\" not defined");
+                std::vector<std::string> paramList;
+                std::string topSARparam = topSAR.value.substr(topSAR.value.find_first_of('('));
+                std::string topSARsignature = topSAR.value.substr(0, topSAR.value.find_first_of('('));
+                if (topSARparam.size() <= 2)
+                    topSARsignature += "()";
+                else {
+                    paramList = split(topSARparam.substr(1,topSARparam.size() - 2), ',');
+                    topSARsignature += "(";
+                    for (int i = 0; i < paramList.size(); i++) {
+                        topSARsignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
+                        topSARsignature += ",";
+                    }
+                    topSARsignature[topSARsignature.size() - 1] = ')';
+                }
+
+                if (topSARsignature != funcSignature) {
+                    semanticError(topSAR.lineNumber, "Function \""  + topSARsignature + "\" not defined");
                 }
                 else {
                     int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", symbolTable.getReturnType(tempId), "", "", "private", methodOffset);
                     methodOffset += 4;
-                    SAR newSAR = {newId, SAS.top().lineNumber, "ref_sar", SAS.top().value, "sa_iExist"};
+                    SAR newSAR = {newId, topSAR.lineNumber, "ref_sar", topSARsignature, "sa_iExist"};
                     SAS.pop();
                     SAS.push(newSAR);
+
+                    symbolTable.iCode(topSAR.lineNumber, FRAME, symbolTable.getSymID(tempId), "this", "", "");
+                    for (int i = 0; i < paramList.size(); i++) {
+                        symbolTable.iCode(topSAR.lineNumber, PUSH, paramList[i], "", "", "");
+                    }
+                    symbolTable.iCode(topSAR.lineNumber, CALL, symbolTable.getSymID(tempId), "", "", "");
+                    if (symbolTable.getReturnType(tempId) != "void") {
+                        symbolTable.iCode(topSAR.lineNumber, PEEK, symbolTable.getSymID(newId), "", "", "");
+                    }
                 }
             }
             else {
@@ -1338,25 +1363,39 @@ public:
             }
             std::string funcSignature = symbolTable.getValue(tempId);
             std::string paramStr = symbolTable.getParam(tempId);
-            std::vector<std::string> paramList;
             if (paramStr.size() <= 2)
                 funcSignature += "()";
             else {
-                paramList = split(paramStr.substr(1,paramStr.size() - 2), ',');
+                std::vector<std::string> pList = split(paramStr.substr(1,paramStr.size() - 2), ',');
                 funcSignature += "(";
-                for (int i = 0; i < paramList.size(); i++) {
-                    funcSignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
+                for (int i = 0; i < pList.size(); i++) {
+                    funcSignature += symbolTable.getType(stoi(pList[i].substr(1, pList[i].size() - 1)));
                     funcSignature += ",";
                 }
                 funcSignature[funcSignature.size() - 1] = ')';
             }
-            if (topSAR.value != funcSignature) {
-                semanticError(topSAR.lineNumber, "Function \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
+            std::vector<std::string> paramList;
+            std::string topSARparam = topSAR.value.substr(topSAR.value.find_first_of('('));
+            std::string topSARsignature = topSAR.value.substr(0, topSAR.value.find_first_of('('));
+            if (topSARparam.size() <= 2)
+                topSARsignature += "()";
+            else {
+                paramList = split(topSARparam.substr(1,topSARparam.size() - 2), ',');
+                topSARsignature += "(";
+                for (int i = 0; i < paramList.size(); i++) {
+                    topSARsignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
+                    topSARsignature += ",";
+                }
+                topSARsignature[topSARsignature.size() - 1] = ')';
+            }
+            
+            if (topSARsignature != funcSignature) {
+                semanticError(topSAR.lineNumber, "Function \""  + topSARsignature + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
             else {
                 int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", symbolTable.getReturnType(tempId), "", "", "private", methodOffset);
                 methodOffset += 4;
-                SAR newSAR = {newId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSAR.value, "sa_rExist"};
+                SAR newSAR = {newId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSARsignature, "sa_rExist"};
                 SAS.push(newSAR);
 
                 symbolTable.iCode(nextSAR.lineNumber, FRAME, symbolTable.getSymID(tempId), symbolTable.getSymID(nextSAR.symID), "", "");
@@ -1405,7 +1444,7 @@ public:
         std::string paramList = "(";
         std::stack<std::string> paramType;
         while (!SAS.empty() && SAS.top().reference != "bal_sar") {
-            paramType.push(symbolTable.getType(SAS.top().symID));
+            paramType.push(symbolTable.getSymID(SAS.top().symID));
             SAS.pop();
         }
         if (SAS.empty())

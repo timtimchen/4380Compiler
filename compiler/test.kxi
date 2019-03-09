@@ -1,6 +1,14 @@
 class Cat {
 	public int x;
-	public int f(int a, int b) {}
+	public int f(int i, bool b) {
+	}
+	
+	private void g() {
+		int r;
+		int g;
+		int k;
+		f ( r * 3 , g< k ) ;
+	}
 }
 
 class Dog {
@@ -29,7 +37,7 @@ void kxi2019 main() {
 //	Cat t[] = new Cat[k];
 	
 	
-	x = cat . f( k , g ) + g * f ;
+	x = cat . f( k , g < k ) + g * f ;
 	
 	cout << x + y / k;
 	return;
