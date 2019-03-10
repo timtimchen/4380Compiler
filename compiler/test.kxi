@@ -1,6 +1,6 @@
 class Cat {
 	public int x;
-	public int ii[];
+	public int ii[] = new int[x];
 	public int f(int i, bool b) {
 		ii[i + 3] = i;
 	}
@@ -37,9 +37,9 @@ void kxi2019 main() {
 	Mouse m1;
 	Mouse m2;
 	char j = 'a';
-	Cat s = new Cat(mouse);
-//	Cat t[] = new Cat[k];
-	
+	Cat s = new Cat(m1);
+	char t[] = new char[k - f];
+	int tt[] = cat.ii;
 	cat.ii[5] = k;
 	x = cat . f( k , g < k ) + g * f ;
 	

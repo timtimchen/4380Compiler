@@ -1730,27 +1730,56 @@ public:
         }
         std::string funcSignature = typeSAR.value;
         std::string paramStr = symbolTable.getParam(tempId);
-        
-        // todo: change the parameter calculation
+        int classId = symbolTable.searchValue("g", typeSAR.value);
+        if (classId == 0 || symbolTable.getKind(classId) != "Class") {
+            semanticError(typeSAR.lineNumber, "Constructor \""  + typeSAR.value + alSAR.value + "\" not related to a class");
+        }
+        int classSize = symbolTable.getOffset(classId);
+
         if (paramStr.size() <= 2)
             funcSignature += "()";
         else {
-            std::vector<std::string> paramList = split(paramStr.substr(1,paramStr.size() - 2), ',');
+            std::vector<std::string> pList = split(paramStr.substr(1,paramStr.size() - 2), ',');
             funcSignature += "(";
-            for (int i = 0; i < paramList.size(); i++) {
-                funcSignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
+            for (int i = 0; i < pList.size(); i++) {
+                funcSignature += symbolTable.getType(stoi(pList[i].substr(1, pList[i].size() - 1)));
                 funcSignature += ",";
             }
             funcSignature[funcSignature.size() - 1] = ')';
         }
-        if (funcSignature != typeSAR.value + alSAR.value) {
-            semanticError(typeSAR.lineNumber, "Constructor \""  + typeSAR.value + alSAR.value + "\" not defined");
+        std::vector<std::string> paramList;
+        std::string topSARparam = alSAR.value;
+        std::string topSARsignature = typeSAR.value;
+        if (topSARparam.size() <= 2)
+            topSARsignature += "()";
+        else {
+            paramList = split(topSARparam.substr(1,topSARparam.size() - 2), ',');
+            topSARsignature += "(";
+            for (int i = 0; i < paramList.size(); i++) {
+                topSARsignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
+                topSARsignature += ",";
+            }
+            topSARsignature[topSARsignature.size() - 1] = ')';
+        }
+        
+        if (funcSignature != topSARsignature) {
+            semanticError(typeSAR.lineNumber, "Constructor \""  + topSARsignature + "\" not defined");
         }
         else {
             int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", typeSAR.value, "", "", "private", methodOffset);
             methodOffset += 4;
-            SAR newSAR = {newId, typeSAR.lineNumber, "new_sar", typeSAR.value + alSAR.value, "sa_newObj"};
+            int returnId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lval", typeSAR.value, "", "", "private", methodOffset);
+            methodOffset +=4;
+            SAR newSAR = {returnId, typeSAR.lineNumber, "new_sar", topSARsignature, "sa_newObj"};
             SAS.push(newSAR);
+            
+            symbolTable.iCode(typeSAR.lineNumber, NEWI, std::to_string(classSize), symbolTable.getSymID(newId), "", "");
+            symbolTable.iCode(typeSAR.lineNumber, FRAME, typeSAR.value, symbolTable.getSymID(newId), "", "");
+            for (int i = 0; i < paramList.size(); i++) {
+                symbolTable.iCode(typeSAR.lineNumber, PUSH, paramList[i], "", "", "");
+            }
+            symbolTable.iCode(typeSAR.lineNumber, CALL, typeSAR.value, "", "", "");
+            symbolTable.iCode(typeSAR.lineNumber, PEEK, symbolTable.getSymID(returnId), "" ,"" , "");
         }
     }
     
@@ -1767,10 +1796,20 @@ public:
         }
         
         if (typeSAR.value == "int" || typeSAR.value == "bool" || typeSAR.value == "char" || symbolTable.searchValue("g", typeSAR.value) != 0) {
+            int indexSize = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "int", "", "", "private", methodOffset);
+            methodOffset += 4;
             int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "@:" + typeSAR.value, "", "", "private", methodOffset);
             methodOffset += 4;
             SAR newSAR = {newId, typeSAR.lineNumber, "new_sar", "", "sa_newArray"};
             SAS.push(newSAR);
+            
+            int sizeId = 0;
+            if (typeSAR.value == "char")
+                sizeId = symbolTable.searchValue("g", "1");
+            else
+                sizeId = symbolTable.searchValue("g", "4");
+            symbolTable.iCode(typeSAR.lineNumber, MUL, symbolTable.getSymID(sizeId), symbolTable.getSymID(arrIndex.symID), symbolTable.getSymID(indexSize), "");
+            symbolTable.iCode(typeSAR.lineNumber, NEW, symbolTable.getSymID(indexSize), symbolTable.getSymID(newId), "", "");
         }
         else {
             semanticError(typeSAR.lineNumber, "Type \""  + typeSAR.value + "\" not defined");
