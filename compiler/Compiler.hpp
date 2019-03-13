@@ -39,6 +39,7 @@ private:
     std::string currentParam;
     bool flagOfPass;  // false for Pass 1, true for Pass 2
     int classOffset;
+    int classInitOffset;
     int methodOffset;
     int currentMethodId;
     std::stack<OpRec> OpStack;
@@ -771,6 +772,10 @@ public:
         else if (scanner.getToken().lexeme == "["
                  || scanner.getToken().lexeme == "="
                  || scanner.getToken().lexeme == ";") {
+            if (flagOfPass) {
+                symbolTable.setStaticInitICode(true);
+                methodOffset = classInitOffset;
+            }
             std::string tempType = typeStr;
             if (scanner.getToken().lexeme == "[") {
                 tempType = "@:" + tempType;
@@ -798,6 +803,10 @@ public:
             else {
                 syntaxError(scanner.getToken(), ";");
             }
+            if (flagOfPass) {
+                classInitOffset = methodOffset;
+                symbolTable.setStaticInitICode(false);
+            }
         }
         else {
             syntaxError(scanner.getToken(), "field_delaration");
@@ -821,7 +830,13 @@ public:
             }
             currentMethod = "." + nameStr;
             currentParam = "";
-            if (flagOfPass) sa_CD(scanner.getToken());
+            if (flagOfPass) {
+                sa_CD(scanner.getToken());
+                currentMethodId = symbolTable.searchValue("g" + currentClass, nameStr);
+                if (currentMethodId == 0) unexpectedError("Cannot find Constructor symID");
+                symbolTable.iCode(scanner.getToken().lineNumber, FUNC, symbolTable.getSymID(currentMethodId), "", "", symbolTable.getSymID(currentMethodId));
+                methodOffset = initialMethodOffset(currentMethodId);
+            }
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == "(") {
                 scanner.fetchTokens();
@@ -842,10 +857,9 @@ public:
                 symbolTable.updateParam(tempId, "[" + currentParam + "]");
             }
             else {
-                currentMethodId = symbolTable.searchValue("g" + currentClass, nameStr);
-                if (currentMethodId == 0) unexpectedError("Cannot find Constructor symID");
-                symbolTable.iCode(scanner.getToken().lineNumber, FUNC, symbolTable.getSymID(currentMethodId), "", "", symbolTable.getSymID(currentMethodId));
-                methodOffset = initialMethodOffset(currentMethodId);
+                int classInitId = symbolTable.searchValue("g" + currentClass, currentClass.substr(1) + "StaticInit");
+                symbolTable.iCode(scanner.getToken().lineNumber, FRAME, symbolTable.getSymID(classInitId), "this", "", "");
+                symbolTable.iCode(scanner.getToken().lineNumber, CALL, symbolTable.getSymID(classInitId), "", "", "");
             }
             method_body(scanner);
             currentMethod = "";
@@ -921,6 +935,15 @@ public:
         else {
             syntaxError(scanner.getToken(), "class_name");
         }
+        int classInitId = 0;
+        if (flagOfPass) {
+            classInitOffset = 12;
+            std::string initializerName = currentClass.substr(1) + "StaticInit";
+            classInitId = symbolTable.insert("g" + currentClass, "M", initializerName, "method", "", "void", "[]", "private", 0);
+            symbolTable.setStaticInitICode(true);
+            symbolTable.iCode(scanner.getToken().lineNumber, FUNC, symbolTable.getSymID(classInitId), "", "", symbolTable.getSymID(classInitId));
+            symbolTable.setStaticInitICode(false);
+        }
         if (scanner.getToken().lexeme == "{") {
             scanner.fetchTokens();
         }
@@ -930,10 +953,25 @@ public:
         while (scanner.getToken().lexeme != "}") {
             class_member_declaration(scanner);
         }
+        if (flagOfPass) {
+            symbolTable.updateOffset(classInitId, classInitOffset);
+            symbolTable.setStaticInitICode(true);
+            symbolTable.iCode(scanner.getToken().lineNumber, RTN, "", "", "", "");
+            symbolTable.setStaticInitICode(false);
+            symbolTable.dumpStaticICode();
+            int constructorId = symbolTable.searchValue("g" + currentClass, currentClass.substr(1));
+            if (constructorId == 0) {
+                int tempId = symbolTable.insert("g" + currentClass, "X", currentClass.substr(1), "Constructor", "", currentClass.substr(1), "[]", "public", 12);
+                symbolTable.iCode(scanner.getToken().lineNumber, FUNC, symbolTable.getSymID(tempId), "", "", symbolTable.getSymID(tempId));
+                symbolTable.iCode(scanner.getToken().lineNumber, FRAME, symbolTable.getSymID(classInitId), "this", "", "");
+                symbolTable.iCode(scanner.getToken().lineNumber, CALL, symbolTable.getSymID(classInitId), "", "", "");
+                symbolTable.iCode(scanner.getToken().lineNumber, RTN, "", "", "", "");
+            }
+        }
         scanner.fetchTokens();  //comsume the closing "}"
-        currentClass = "";
         if (!flagOfPass)
             symbolTable.updateOffset(classId, classOffset);
+        currentClass = "";
     }
     
     void variable_declaration(Scanner & scanner) {
@@ -2479,7 +2517,7 @@ public:
         syntaxAnalysis();
         semanticAnalysis();
 //        symbolTable.printAll();
-        symbolTable.printICode();
+        symbolTable.printAllICode();
 //        symbolTable.generateTCode();
     }
 };

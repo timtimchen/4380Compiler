@@ -83,6 +83,7 @@ private:
     int labelCounter = 0;
     std::vector<QUAD> quad;
     std::vector<QUAD> sQuad;
+    bool isStaticInitICode = false;
 
 public:
     SymTable() {
@@ -222,20 +223,26 @@ public:
     
     // icode generator
     void iCode(int line, ICODEOP op, std::string opr1, std::string opr2, std::string opr3, std::string lbl) {
-        iCodeCounter++;
-        if (iCodeCounter > quad.size()) {
+        if (isStaticInitICode) {
             QUAD newQuad = {line, op, opr1, opr2, opr3, lbl};
-            quad.push_back(newQuad);
+            sQuad.push_back(newQuad);
         }
         else {
-            quad[quad.size() - 1].lineNumber = line;
-            quad[quad.size() - 1].opcode = op;
-            quad[quad.size() - 1].operand1 = opr1;
-            quad[quad.size() - 1].operand2 = opr2;
-            quad[quad.size() - 1].operand3 = opr3;
-            if (lbl.size() > 0) {
-                backPatching(quad[quad.size() - 1].label, lbl);
-                quad[quad.size() - 1].label = lbl;
+            iCodeCounter++;
+            if (iCodeCounter > quad.size()) {
+                QUAD newQuad = {line, op, opr1, opr2, opr3, lbl};
+                quad.push_back(newQuad);
+            }
+            else {
+                quad[quad.size() - 1].lineNumber = line;
+                quad[quad.size() - 1].opcode = op;
+                quad[quad.size() - 1].operand1 = opr1;
+                quad[quad.size() - 1].operand2 = opr2;
+                quad[quad.size() - 1].operand3 = opr3;
+                if (lbl.size() > 0) {
+                    backPatching(quad[quad.size() - 1].label, lbl);
+                    quad[quad.size() - 1].label = lbl;
+                }
             }
         }
     }
@@ -249,6 +256,17 @@ public:
             backPatching(quad[quad.size() - 1].label, lbl);
             quad[quad.size() - 1].label = lbl;
         }
+    }
+    
+    void setStaticInitICode(bool value) {
+        isStaticInitICode = value;
+    }
+    
+    void dumpStaticICode() {
+        iCodeCounter += sQuad.size();
+        for (int i = 0; i < sQuad.size(); i++)
+            quad.push_back(sQuad[i]);
+        sQuad.clear();
     }
     
     void backPatching(std::string findLabel, std::string replaceLabel) {
@@ -423,19 +441,23 @@ public:
         }
     }
     
-    void printICode() {
-        for (int i = 0; i < quad.size(); i++) {
-            std::cout << "  " << quad[i].lineNumber << ":\t";
-            if (quad[i].label.size() == 0)
-                std::cout << "        \t";
-            else
-                std::cout << quad[i].label << "\t";
-            std::cout << getICodeOpStr(quad[i].opcode) << "\t";
-            std::cout << quad[i].operand1 << "\t";
-            std::cout << quad[i].operand2 << "\t";
-            std::cout << quad[i].operand3 << "\t";
-            std::cout << std::endl;
-        }
+    std::string printICode(QUAD code) {
+        std::string result;
+        result = "  " + std::to_string(code.lineNumber) + ":\t";
+        if (code.label.size() == 0)
+            result += "        \t";
+        else
+            result += code.label + "\t";
+        result += getICodeOpStr(code.opcode) + "\t";
+        result += code.operand1 + "\t";
+        result += code.operand2 + "\t";
+        result += code.operand3 + "\t";
+        return result;
+    }
+    
+    void printAllICode() {
+        for (int i = 0; i < quad.size(); i++)
+            std::cout << printICode(quad[i]) << std::endl;
     }
     
     void generateTCode() {

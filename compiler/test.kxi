@@ -12,7 +12,9 @@ class Cat {
 		f ( r * 3 , g< k ) ;
 	}
 	
-	Cat(Mouse m) {}
+	private int t = x + ii[ 3 + x ];
+	Cat(Mouse m) 
+	{}
 }
 
 class Dog {
