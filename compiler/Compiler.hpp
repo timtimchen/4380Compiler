@@ -1327,7 +1327,7 @@ public:
                 currentPath = currentPath.substr(0, currentPath.find_last_of('.'));
             }
             if (tempId != 0 && symbolTable.getType(tempId).size() > 0 && symbolTable.getType(tempId)[0] == '@') {
-                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private", methodOffset);
+                int newId = symbolTable.insert("g" + currentClass + currentMethod, "R", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private", methodOffset);
                 methodOffset += 4;
                 SAR newSAR = {newId, SAS.top().lineNumber, "id_sar", symbolTable.getSymID(newId), "sa_iExist"};
                 //use SAS.top().symID to find the index of array
@@ -1376,7 +1376,7 @@ public:
                 semanticError(topSAR.lineNumber, "Variable \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
             else {
-                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId), "", "", "private", methodOffset);
+                int newId = symbolTable.insert("g" + currentClass + currentMethod, "R", "", "lvar", symbolTable.getType(tempId), "", "", "private", methodOffset);
                 methodOffset += 4;
                 SAR newSAR = {newId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSAR.value, "sa_rExist"};
                 SAS.push(newSAR);
@@ -1464,7 +1464,7 @@ public:
             else {
                 int refId = symbolTable.insert("g" + currentClass + currentMethod, "R", "", "tvar", symbolTable.getType(tempId), "", "", "private", methodOffset);
                 methodOffset += 4;
-                int newId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private", methodOffset);
+                int newId = symbolTable.insert("g" + currentClass + currentMethod, "R", "", "lvar", symbolTable.getType(tempId).substr(2), "", "", "private", methodOffset);
                 methodOffset += 4;
                 SAR newSAR = {newId, topSAR.lineNumber, "id_sar", symbolTable.getSymID(newId), "sa_rExist"};
                 SAS.push(newSAR);
@@ -1811,12 +1811,13 @@ public:
             SAR newSAR = {returnId, typeSAR.lineNumber, "new_sar", topSARsignature, "sa_newObj"};
             SAS.push(newSAR);
             
+            int methodId = symbolTable.searchValue("g." + typeSAR.value, typeSAR.value);
             symbolTable.iCode(typeSAR.lineNumber, NEWI, std::to_string(classSize), symbolTable.getSymID(newId), "", "");
-            symbolTable.iCode(typeSAR.lineNumber, FRAME, typeSAR.value, symbolTable.getSymID(newId), "", "");
+            symbolTable.iCode(typeSAR.lineNumber, FRAME, symbolTable.getSymID(methodId), symbolTable.getSymID(newId), "", "");
             for (int i = 0; i < paramList.size(); i++) {
                 symbolTable.iCode(typeSAR.lineNumber, PUSH, paramList[i], "", "", "");
             }
-            symbolTable.iCode(typeSAR.lineNumber, CALL, typeSAR.value, "", "", "");
+            symbolTable.iCode(typeSAR.lineNumber, CALL, symbolTable.getSymID(methodId), "", "", "");
             symbolTable.iCode(typeSAR.lineNumber, PEEK, symbolTable.getSymID(returnId), "" ,"" , "");
         }
     }
@@ -2517,8 +2518,9 @@ public:
         syntaxAnalysis();
         semanticAnalysis();
 //        symbolTable.printAll();
-        symbolTable.printAllICode();
-//        symbolTable.generateTCode();
+//        symbolTable.printAllICode();
+        symbolTable.generateTCode();
+        std::cout << "Success to compile kxi code to \"tcode.asm\" file\n";
     }
 };
 

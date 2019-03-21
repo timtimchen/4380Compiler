@@ -84,6 +84,7 @@ private:
     std::vector<QUAD> quad;
     std::vector<QUAD> sQuad;
     bool isStaticInitICode = false;
+    std::vector<std::string> tCode;
 
 public:
     SymTable() {
@@ -461,18 +462,170 @@ public:
     }
     
     void generateTCode() {
-        std::ofstream targetFile;
-        targetFile.open ("out.asm", std::ios::out | std::ios::trunc);
         for (int i = 0; i < quad.size(); i++) {
-            targetFile << "  " << quad[i].lineNumber << ":\t";
-            if (quad[i].label.size() == 0)
-                targetFile << "        \t";
-            else
-                targetFile << quad[i].label << "\t";
-            targetFile << getICodeOpStr(quad[i].opcode) << "\t";
-            targetFile << quad[i].operand1 << "\t";
-            targetFile << quad[i].operand2 << "\t";
-            targetFile << quad[i].operand3 << "\t";
+            switch (quad[i].opcode) {
+                case ADD:
+                    tCode.push_back("ADD   ");
+                    break;
+                    
+                case ADI:
+                    tCode.push_back("ADI   ");
+                    break;
+                    
+                case SUB:
+                    tCode.push_back("SUB   ");
+                    break;
+                    
+                case MUL:
+                    tCode.push_back("MUL   ");
+                    break;
+                    
+                case DIV:
+                    tCode.push_back("DIV   ");
+                    break;
+                    
+                case LT:
+                    tCode.push_back("LT    ");
+                    break;
+                    
+                case GT:
+                    tCode.push_back("GT    ");
+                    break;
+                    
+                case NE:
+                    tCode.push_back("NE    ");
+                    break;
+                    
+                case EQ:
+                    tCode.push_back("EQ    ");
+                    break;
+                    
+                case LE:
+                    tCode.push_back("LE    ");
+                    break;
+                    
+                case GE:
+                    tCode.push_back("GE    ");
+                    break;
+                    
+                case AND:
+                    tCode.push_back("AND   ");
+                    break;
+                    
+                case OR:
+                    tCode.push_back("OR    ");
+                    break;
+                    
+                case BF:
+                    tCode.push_back("BF    ");
+                    break;
+                    
+                case BT:
+                    tCode.push_back("BT    ");
+                    break;
+                    
+                case JMP:
+                    tCode.push_back("JMP   ");
+                    break;
+                    
+                case PUSH:
+                    tCode.push_back("PUSH  ");
+                    break;
+                    
+                case POP:
+                    tCode.push_back("POP   ");
+                    break;
+                    
+                case PEEK:
+                    tCode.push_back("PEEK  ");
+                    break;
+                    
+                case FRAME:
+                    tCode.push_back("FRAME ");
+                    break;
+                    
+                case CALL:
+                    tCode.push_back("CALL  ");
+                    break;
+                    
+                case RTN:
+                    tCode.push_back("RTN1   ");
+                    break;
+                    
+                case RETURN:
+                    tCode.push_back("RETURN");
+                    break;
+                    
+                case FUNC:
+                    tCode.push_back("FUNC  ");
+                    break;
+                    
+                case NEWI:
+                    tCode.push_back("NEWI  ");
+                    break;
+                    
+                case NEW:
+                    tCode.push_back("NEW   ");
+                    break;
+                    
+                case MOV:
+                    tCode.push_back("MOV   ");
+                    break;
+                    
+                case MOVI:
+                    tCode.push_back("MOVI  ");
+                    break;
+                    
+                case WRITE:
+                    tCode.push_back("WRITE ");
+                    break;
+                    
+                case READ:
+                    tCode.push_back("READ  ");
+                    break;
+                    
+                case WRTC:
+                    tCode.push_back("WRTC  ");
+                    break;
+                    
+                case WRTI:
+                    tCode.push_back("WRTI  ");
+                    break;
+                    
+                case RDC:
+                    tCode.push_back("RDC   ");
+                    break;
+                    
+                case RDI:
+                    tCode.push_back("RDI   ");
+                    break;
+                    
+                case REF:
+                    tCode.push_back("REF   ");
+                    break;
+                    
+                case AEF:
+                    tCode.push_back("AEF   ");
+                    break;
+                    
+                case STOP:
+                    tCode.push_back("STOP  ");
+                    break;
+                    
+                default:
+                    tCode.push_back("NOP");
+                    break;
+            }
+
+        }
+        saveTCodeTofile();
+    }
+    
+    void saveTCodeTofile() {
+        std::ofstream targetFile;
+        targetFile.open ("tcode.asm", std::ios::out | std::ios::trunc);
+        for (int i = 0; i < tCode.size(); i++) {
+            targetFile << tCode[i];
             targetFile << "\n";
         }
         targetFile.close();
