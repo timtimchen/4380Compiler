@@ -133,7 +133,7 @@ public:
         if (str.size() < 1) return false;
         std::string numStr;
         // check minus sign
-        if (str.at(0) == '-') {
+        if (str.at(0) == '-' || str.at(0) == '+') {
             // if it is signed, ignore the minus sign
             numStr = str.substr(1);
         } else {
@@ -526,7 +526,7 @@ public:
     void run() {
         bool programStop = false;
         REG[8] = 0; // setting the PC register, start from MEM[0]
-        REG[9] = memoryUsedCount; // setting the SL register nextll.;ju,,;.l,.l,m to the last used byte
+        REG[9] = memoryUsedCount; // setting the SL register next to the last used byte
         REG[12] = MEM_SIZE - 4; // setting the SB register to the last slot of Memory
         REG[10] = REG[12]; // setting the SP register
         REG[11] = REG[10]; // setting the FP register, first pointing to out of memory
@@ -664,7 +664,7 @@ public:
                     break;
                 case ADI:
                     REG[8] += FIX_LENGTH;
-                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE && ip->Oprand2) {
+                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE) {
                         REG[ip->Oprand1] += ip->Oprand2;
                     } else {
                         std::cout << "Unexpected Error!" << std::endl;
@@ -758,17 +758,17 @@ public:
                     break;
                 case STRI:
                     REG[8] += FIX_LENGTH;
-                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE && ip->Oprand2 <= MEM_SIZE - INT_SIZE) {
+                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE && ip->Oprand2 >= 0 && ip->Oprand2 <= REG_SIZE) {
                         int *p = reinterpret_cast<int *>(&MEM[REG[ip->Oprand2]]);
                         *p = REG[ip->Oprand1];
-                    } else {
+                   } else {
                         std::cout << "Unexpected Error!" << std::endl;
                         return;
                     }
                     break;
                 case LDRI:
                     REG[8] += FIX_LENGTH;
-                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE && ip->Oprand2 <= MEM_SIZE - INT_SIZE) {
+                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE && ip->Oprand2 >= 0 && ip->Oprand2 <= REG_SIZE) {
                         int *p = reinterpret_cast<int *>(&MEM[REG[ip->Oprand2]]);
                         REG[ip->Oprand1] = *p;
                     } else {
@@ -778,7 +778,7 @@ public:
                     break;
                 case STBI:
                     REG[8] += FIX_LENGTH;
-                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE && ip->Oprand2 < MEM_SIZE) {
+                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE && ip->Oprand2 >= 0 && ip->Oprand2 <= REG_SIZE) {
                         MEM[REG[ip->Oprand2]] = static_cast<char>(REG[ip->Oprand1]);
                     } else {
                         std::cout << "Unexpected Error!" << std::endl;
@@ -787,7 +787,7 @@ public:
                     break;
                 case LDBI:
                     REG[8] += FIX_LENGTH;
-                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE && ip->Oprand2 < MEM_SIZE) {
+                    if (ip->Oprand1 >= 0 && ip->Oprand1 < REG_SIZE && ip->Oprand2 >= 0 && ip->Oprand2 <= REG_SIZE) {
                         REG[ip->Oprand1] = 0; // clear the register
                         REG[ip->Oprand1] = static_cast<int>(MEM[REG[ip->Oprand2]]);
                     } else {

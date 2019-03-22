@@ -1,4 +1,19 @@
+class Cat {
+	public char c = 'c';
+	
+	public void test(char temp) {
+		this.c = temp;
+	}
+	
+	Cat() {
+		this.test('e');
+	}
+}
+
 void kxi2019 main() {
-	char x = 'a';	
-	cout << x;
+	Cat x = new Cat();
+	cout << 'a';
+	cout << ' ';
+	cout << x.c;
+	
 }

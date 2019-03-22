@@ -965,7 +965,7 @@ public:
                 symbolTable.iCode(scanner.getToken().lineNumber, FUNC, symbolTable.getSymID(tempId), "", "", symbolTable.getSymID(tempId));
                 symbolTable.iCode(scanner.getToken().lineNumber, FRAME, symbolTable.getSymID(classInitId), "this", "", "");
                 symbolTable.iCode(scanner.getToken().lineNumber, CALL, symbolTable.getSymID(classInitId), "", "", "");
-                symbolTable.iCode(scanner.getToken().lineNumber, RTN, "", "", "", "");
+                symbolTable.iCode(scanner.getToken().lineNumber, RETURN, "this", "", "", "");
             }
         }
         scanner.fetchTokens();  //comsume the closing "}"
@@ -1043,7 +1043,14 @@ public:
         while (scanner.getToken().lexeme != "}") {
             statement(scanner);
         }
-        if (flagOfPass) symbolTable.iCode(scanner.getToken().lineNumber, RTN, "", "", "", "");
+        if (flagOfPass) {
+            int tempId = symbolTable.searchValue("g" + currentClass, currentMethod.substr(1));
+            if (tempId == 0) unexpectedError("Cannot find currentMethod symID");
+            if (symbolTable.getKind(tempId) == "Constructor")
+                symbolTable.iCode(scanner.getToken().lineNumber, RETURN, "this", "", "", "");
+            else
+                symbolTable.iCode(scanner.getToken().lineNumber, RTN, "", "", "", "");
+        }
         scanner.fetchTokens();  //consume the closing "}"
     }
 
@@ -1362,11 +1369,15 @@ public:
         
         if (topSAR.reference == "id_sar") {
             int classID = 0;
+            std::string refStr;
             if (nextSAR.value == "this") {
                 classID = symbolTable.searchValue("g", currentClass.substr(1));
+                refStr = "this";
             }
-            else
+            else {
                 classID = symbolTable.getClassIDFromObject(nextSAR.symID);
+                refStr = symbolTable.getSymID(nextSAR.symID);
+            }
             if (classID == 0) {
                 semanticError(topSAR.lineNumber, "Variable \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
@@ -1381,16 +1392,20 @@ public:
                 SAR newSAR = {newId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSAR.value, "sa_rExist"};
                 SAS.push(newSAR);
 
-                symbolTable.iCode(nextSAR.lineNumber, REF, symbolTable.getSymID(nextSAR.symID), symbolTable.getSymID(tempId), symbolTable.getSymID(newId), "");
+                symbolTable.iCode(nextSAR.lineNumber, REF, refStr, symbolTable.getSymID(tempId), symbolTable.getSymID(newId), "");
             }
         }
         else if (topSAR.reference == "func_sar") {
             int classID = 0;
+            std::string refStr;
             if (nextSAR.value == "this") {
                 classID = symbolTable.searchValue("g", currentClass.substr(1));
+                refStr = "this";
             }
-            else
+            else {
                 classID = symbolTable.getClassIDFromObject(nextSAR.symID);
+                refStr = symbolTable.getSymID(nextSAR.symID);
+            }
             if (classID == 0) {
                 semanticError(topSAR.lineNumber, "Function \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
@@ -1437,7 +1452,7 @@ public:
                 SAR newSAR = {newId, topSAR.lineNumber, "ref_sar", nextSAR.value + "." + topSARsignature, "sa_rExist"};
                 SAS.push(newSAR);
 
-                symbolTable.iCode(nextSAR.lineNumber, FRAME, symbolTable.getSymID(tempId), symbolTable.getSymID(nextSAR.symID), "", "");
+                symbolTable.iCode(nextSAR.lineNumber, FRAME, symbolTable.getSymID(tempId), refStr, "", "");
                 for (int i = 0; i < paramList.size(); i++) {
                     symbolTable.iCode(nextSAR.lineNumber, PUSH, paramList[i], "", "", "");
                 }
@@ -1449,10 +1464,15 @@ public:
         }
         else if (topSAR.reference == "arr_sar") {
             int classID = 0;
-            if (nextSAR.value == "this")
+            std::string refStr;
+            if (nextSAR.value == "this") {
                 classID = symbolTable.searchValue("g", currentClass.substr(1));
-            else
+                refStr = "this";
+            }
+            else {
                 classID = symbolTable.getClassIDFromObject(nextSAR.symID);
+                refStr = symbolTable.getSymID(nextSAR.symID);
+            }
             if (classID == 0) {
                 semanticError(topSAR.lineNumber, "Array \""  + topSAR.value + "\" not defined/public in class \"" + nextSAR.value + "\"");
             }
@@ -1469,7 +1489,7 @@ public:
                 SAR newSAR = {newId, topSAR.lineNumber, "id_sar", symbolTable.getSymID(newId), "sa_rExist"};
                 SAS.push(newSAR);
                 
-                symbolTable.iCode(nextSAR.lineNumber, REF, symbolTable.getSymID(nextSAR.symID), symbolTable.getSymID(tempId), symbolTable.getSymID(refId), "");
+                symbolTable.iCode(nextSAR.lineNumber, REF, refStr, symbolTable.getSymID(tempId), symbolTable.getSymID(refId), "");
                 //use topSAR.symID to find the index of array
                 symbolTable.iCode(nextSAR.lineNumber, AEF, symbolTable.getSymID(refId), symbolTable.getSymID(topSAR.symID), symbolTable.getSymID(newId), "");
             }

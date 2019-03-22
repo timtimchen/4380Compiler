@@ -19,7 +19,6 @@ int main(int argc, const char * argv[]) {
         Compiler newCompiler = Compiler(argv[1]);
         newCompiler.run();
     }
-    
+
     return 0;
 }
-
