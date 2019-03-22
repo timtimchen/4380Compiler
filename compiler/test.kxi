@@ -1,19 +1,20 @@
 class Cat {
-	public char c = 'c';
+	public int c = 1;
 	
-	public void test(char temp) {
+	public void test(int temp) {
 		this.c = temp;
 	}
 	
-	Cat() {
-		this.test('e');
+	Cat(int i) {
+		this.test(i);
 	}
 }
 
 void kxi2019 main() {
-	Cat x = new Cat();
-	cout << 'a';
+	Cat x = new Cat(4);
+	cout << x.c > 5;
 	cout << ' ';
-	cout << x.c;
+	x.c = 7;
+	cout << x.c > 5;
 	
 }

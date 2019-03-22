@@ -528,7 +528,7 @@ public:
         tCode.push_back("UnderF\t\t.INT\t-111111");
         tCode.push_back("newline\t\t.BYT\t10");
         tCode.push_back("space\t\t.BYT\t32");
-        
+
         for (int i = SYMID_START; i < nextID; i++) {
             if (getKind(i) == "ilit") {
                 tCode.push_back(getSymID(i) + "\t\t.INT\t" + getValue(i));
@@ -638,8 +638,13 @@ public:
                     break;
                 case PUSH:
                 {
+                    tCode.push_back("\t\t\t\tMOV\t\tR7, FP");
+                    tCode.push_back("\t\t\t\tADI\t\tFP, -4");
+                    tCode.push_back("\t\t\t\tLDR\t\tR6, FP");
+                    tCode.push_back("\t\t\t\tMOV\t\tFP, R6");
                     tCode.push_back(";" + printICode(quad[i]));
                     loadDataCode(quad[i].operand1, "R1");
+                    tCode.push_back("\t\t\t\tMOV\t\tFP, R7");
                     tCode.push_back("\t\t\t\tSTR\t\tR1, SP");
                     tCode.push_back("\t\t\t\tADI\t\tSP, -4");
                 }
@@ -809,7 +814,8 @@ public:
                 case WRITE:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    loadDataCode(quad[i].operand1, "R3");
+                    tCode.push_back("\t\t\t\tTRP\t\t1");
                 }
                     break;
                 case READ:
@@ -828,7 +834,8 @@ public:
                 case WRTI:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    loadDataCode(quad[i].operand1, "R3");
+                    tCode.push_back("\t\t\t\tTRP\t\t1");
                 }
                     break;
                 case RDC:
