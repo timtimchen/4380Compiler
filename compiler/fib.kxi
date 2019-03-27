@@ -1,0 +1,33 @@
+class Fib {
+	public int fib(int i) {
+		if (i == 0)
+			return 0;
+		else if (i == 1)
+			return 1;
+		else
+			return fib(i - 2) + fib(i - 1); 
+	}
+	
+	public int input() {
+		int number;
+		cout << 'i';
+		cout << 'n';
+		cout << 'p';
+		cout << 'u';
+		cout << 't';
+		cout << ':';
+		cin >> number;
+		return number;
+	}
+}
+
+void kxi2019 main() {
+	Fib obj;
+	int x = obj.input();
+	while (x != 0) {
+		cout << obj.fib(x);
+		cout << '\n';
+		x = obj.input();
+	}
+	cout << '\n';
+}

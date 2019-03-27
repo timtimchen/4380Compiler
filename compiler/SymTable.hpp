@@ -435,31 +435,39 @@ public:
         return paramNum * 4;
     }
     
-    void loadDataCode(std::string symIdStr, std::string regName) {
+    void loadDataCode(std::string symIdStr, std::string regName, std::string label) {
         int symId = std::stoi(symIdStr.substr(1));
         if (getKind(symId) == "ilit") {
-            tCode.push_back("\t\t\t\tLDR\t\t" + regName + ", " + symIdStr);
+            tCode.push_back(label + "\t\tLDR\t\t" + regName + ", " + symIdStr);
             return;
         }
         else if (getKind(symId) == "clit") {
-            tCode.push_back("\t\t\t\tLDB\t\t" + regName + ", " + symIdStr);
+            tCode.push_back(label + "\t\tLDB\t\t" + regName + ", " + symIdStr);
+            return;
+        }
+        else if (getValue(symId) == "true") {
+            tCode.push_back(label + "\t\tLDR\t\t" + regName + ", TRUE1");
+            return;
+        }
+        else if (getValue(symId) == "false") {
+            tCode.push_back(label + "\t\tLDR\t\t" + regName + ", FALSE0");
             return;
         }
         else if (getKind(symId) == "ivar") {
-            tCode.push_back("\t\t\t\tMOV\t\tR0, FP");
+            tCode.push_back(label + "\t\tMOV\t\tR0, FP");
             tCode.push_back("\t\t\t\tADI\t\tR0, -8");
             tCode.push_back("\t\t\t\tLDR\t\t" + regName + ", R0");
             tCode.push_back("\t\t\t\tMOV\t\tR0, " + regName);
             tCode.push_back("\t\t\t\tADI\t\tR0, " + std::to_string(getOffset(symId)));
         }
         else if (symIdStr[0] == 'R') {
-            tCode.push_back("\t\t\t\tMOV\t\tR0, FP");
+            tCode.push_back(label + "\t\tMOV\t\tR0, FP");
             tCode.push_back("\t\t\t\tADI\t\tR0, -" + std::to_string(getOffset(symId)));
             tCode.push_back("\t\t\t\tLDR\t\t" + regName + ", R0");
             tCode.push_back("\t\t\t\tMOV\t\tR0, " + regName);
         }
         else {
-            tCode.push_back("\t\t\t\tMOV\t\tR0, FP");
+            tCode.push_back(label + "\t\tMOV\t\tR0, FP");
             tCode.push_back("\t\t\t\tADI\t\tR0, -" + std::to_string(getOffset(symId)));
         }
         if (getType(symId) == "char")
@@ -526,6 +534,8 @@ public:
         // generate global data
         tCode.push_back("OverF\t\t.INT\t-999999");
         tCode.push_back("UnderF\t\t.INT\t-111111");
+        tCode.push_back("FALSE0\t\t.INT\t0");
+        tCode.push_back("TRUE1\t\t.INT\t1");
         tCode.push_back("newline\t\t.BYT\t10");
         tCode.push_back("space\t\t.BYT\t32");
 
@@ -543,7 +553,12 @@ public:
                 case ADD:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tADD\t\tR1, R2");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case ADI:
@@ -555,7 +570,12 @@ public:
                 case SUB:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tSUB\t\tR1, R2");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case MUL:
@@ -585,13 +605,39 @@ public:
                 case NE:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tCMP\t\tR1, R2");
+                    int labelCnt = getNewLabelCount();
+                    std::string labelSKIPIF = "SKIPIF" + std::to_string(labelCnt);
+                    std::string labelSKIPELSE = "SKIPELSE" + std::to_string(labelCnt);
+                    tCode.push_back("\t\t\t\tBRZ\t\tR1, " + labelSKIPIF);
+                    tCode.push_back("\t\t\t\tLDR\t\tR3, TRUE1");
+                    tCode.push_back("\t\t\t\tJMP\t\t" + labelSKIPELSE);
+                    tCode.push_back(labelSKIPIF + "\t\tLDR\t\tR3, FALSE0");
+                    tCode.push_back(labelSKIPELSE + "\t\tMOV\t\tR1, R3");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case EQ:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tCMP\t\tR1, R2");
+                    int labelCnt = getNewLabelCount();
+                    std::string labelSKIPIF = "SKIPIF" + std::to_string(labelCnt);
+                    std::string labelSKIPELSE = "SKIPELSE" + std::to_string(labelCnt);
+                    tCode.push_back("\t\t\t\tBNZ\t\tR1, " + labelSKIPIF);
+                    tCode.push_back("\t\t\t\tLDR\t\tR3, TRUE1");
+                    tCode.push_back("\t\t\t\tJMP\t\t" + labelSKIPELSE);
+                    tCode.push_back(labelSKIPIF + "\t\tLDR\t\tR3, FALSE0");
+                    tCode.push_back(labelSKIPELSE + "\t\tMOV\t\tR1, R3");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case LE:
@@ -615,13 +661,21 @@ public:
                 case OR:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tOR\t\tR1, R2");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case BF:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    tCode.push_back("\t\t\t\tBRZ\t\tR1, " + quad[i].operand2);
                 }
                     break;
                 case BT:
@@ -633,7 +687,9 @@ public:
                 case JMP:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    tCode.push_back(tempLabel + "\t\tJMP\t\t" + quad[i].operand1);
                 }
                     break;
                 case PUSH:
@@ -643,7 +699,7 @@ public:
                     tCode.push_back("\t\t\t\tLDR\t\tR6, FP");
                     tCode.push_back("\t\t\t\tMOV\t\tFP, R6");
                     tCode.push_back(";" + printICode(quad[i]));
-                    loadDataCode(quad[i].operand1, "R1");
+                    loadDataCode(quad[i].operand1, "R1", "\t\t");
                     tCode.push_back("\t\t\t\tMOV\t\tFP, R7");
                     tCode.push_back("\t\t\t\tSTR\t\tR1, SP");
                     tCode.push_back("\t\t\t\tADI\t\tSP, -4");
@@ -658,15 +714,24 @@ public:
                 case PEEK:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    tCode.push_back("\t\t\t\tLDR\t\tR6, SP");
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    tCode.push_back(tempLabel + "\t\tLDR\t\tR6, SP");
                     storeDataCode(quad[i].operand1, "R6");
                 }
                     break;
                 case FRAME:
                 {
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
                     tCode.push_back(";" + printICode(quad[i]));
                     int funcId = std::stoi(quad[i].operand1.substr(1));
                     int paramSize = 12 + calculateParamSize(getParam(funcId));
+                    // Test for overflow
+                    tCode.push_back(tempLabel + "\t\tMOV\t\tR5, SP");
+                    tCode.push_back("\t\t\t\tADI\t\tR5, -" + std::to_string(paramSize));
+                    tCode.push_back("\t\t\t\tCMP\t\tR5, SL");
+                    tCode.push_back("\t\t\t\tBLT\t\tR5, OVERFLOW");
                     // Set 'this' pointer
                     if (quad[i].operand2 == "NULL") {
                         // clear R6
@@ -679,13 +744,8 @@ public:
                         tCode.push_back("\t\t\t\tLDR\t\tR6, R7");
                     }
                     else {
-                        loadDataCode(quad[i].operand2, "R6");
+                        loadDataCode(quad[i].operand2, "R6", "\t\t");
                     }
-                    // Test for overflow
-                    tCode.push_back("\t\t\t\tMOV\t\tR5, SP");
-                    tCode.push_back("\t\t\t\tADI\t\tR5, -" + std::to_string(paramSize));
-                    tCode.push_back("\t\t\t\tCMP\t\tR5, SL");
-                    tCode.push_back("\t\t\t\tBLT\t\tR5, OVERFLOW");
                     // Save off current FP in a Register
                     tCode.push_back("\t\t\t\tMOV\t\tR3, FP");
                     // Point at Current Activation Record (FP = SP)
@@ -714,8 +774,10 @@ public:
                 case RTN:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
                     // De-allocate Current Activation Record
-                    tCode.push_back("\t\t\t\tMOV\t\tSP, FP");
+                    tCode.push_back(tempLabel + "\t\tMOV\t\tSP, FP");
                     // Test for Underflow (SP > SB)
                     tCode.push_back("\t\t\t\tMOV\t\tR5, FP");
                     tCode.push_back("\t\t\t\tCMP\t\tR5, SB");
@@ -733,8 +795,10 @@ public:
                 case RETURN:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
                     // De-allocate Current Activation Record
-                    tCode.push_back("\t\t\t\tMOV\t\tSP, FP");
+                    tCode.push_back(tempLabel + "\t\tMOV\t\tSP, FP");
                     // Test for Underflow (SP > SB)
                     tCode.push_back("\t\t\t\tMOV\t\tR5, FP");
                     tCode.push_back("\t\t\t\tCMP\t\tR5, SB");
@@ -751,7 +815,7 @@ public:
                         tCode.push_back("\t\t\t\tSTR\t\tR7, R6");
                     }
                     else {
-                        loadDataCode(quad[i].operand1, "R7");
+                        loadDataCode(quad[i].operand1, "R7", "\t\t");
                         tCode.push_back("\t\t\t\tSTR\t\tR7, FP");
                    }
                     // Load PFP from the Frame
@@ -801,7 +865,9 @@ public:
                 case MOV:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    loadDataCode(quad[i].operand1, "R1");
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
                     storeDataCode(quad[i].operand2, "R1");
                 }
                     break;
@@ -814,7 +880,9 @@ public:
                 case WRITE:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    loadDataCode(quad[i].operand1, "R3");
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R3", tempLabel);
                     tCode.push_back("\t\t\t\tTRP\t\t1");
                 }
                     break;
@@ -827,14 +895,18 @@ public:
                 case WRTC:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    loadDataCode(quad[i].operand1, "R3");
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R3", tempLabel);
                     tCode.push_back("\t\t\t\tTRP\t\t3");
                 }
                     break;
                 case WRTI:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    loadDataCode(quad[i].operand1, "R3");
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R3", tempLabel);
                     tCode.push_back("\t\t\t\tTRP\t\t1");
                 }
                     break;
@@ -847,20 +919,25 @@ public:
                 case RDI:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    tCode.push_back(tempLabel +"\t\tTRP\t\t2");
+                    storeDataCode(quad[i].operand1, "R3");
                 }
                     break;
                 case REF:
                 {
                     int tId = std::stoi(quad[i].operand3.substr(1));
                     tCode.push_back(";" + printICode(quad[i]));
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
                     if (quad[i].operand1 == "this") {
-                        tCode.push_back("\t\t\t\tMOV\t\tR0, FP");
+                        tCode.push_back(tempLabel + "\t\tMOV\t\tR0, FP");
                         tCode.push_back("\t\t\t\tADI\t\tR0, -8");
                         tCode.push_back("\t\t\t\tLDR\t\tR1, R0");
                     }
                     else {
-                        loadDataCode(quad[i].operand1, "R1");
+                        loadDataCode(quad[i].operand1, "R1", tempLabel);
                     }
                     tCode.push_back("\t\t\t\tADI\t\tR1, " + std::to_string(getOffset(std::stoi(quad[i].operand2.substr(1)))));
                     // store the address on R1 to a Reference variable
