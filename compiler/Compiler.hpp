@@ -606,6 +606,9 @@ public:
             scanner.fetchTokens();
             if (scanner.getToken().lexeme != ";") {
                 expression(scanner);
+            } else if (flagOfPass) {
+                SAR newSAR = {0, scanner.getToken().lineNumber, "rtn_sar", "RTN", "sa_return"};
+                SAS.push(newSAR);
             }
             if (scanner.getToken().lexeme == ";") {
                 if (flagOfPass) sa_return(scanner.getToken().lineNumber);
@@ -1630,7 +1633,9 @@ public:
             }
             std::string expressionType, symIdStr;
             if (SAS.empty()) {
-                expressionType = "void";
+                unexpectedError("Unexpected empty SAS at sa_return");
+            }
+            else if (SAS.top().value == "RTN") {
                 symbolTable.iCode(lineNumber, RTN, "", "", "", "");
             }
             else {
@@ -1643,9 +1648,9 @@ public:
                     expressionType = symbolTable.getType(SAS.top().symID);
                 }
                 symbolTable.iCode(lineNumber, RETURN, symIdStr, "", "", "");
-            }
-            if (expressionType != symbolTable.getReturnType(tempId)) {
-                semanticError(lineNumber, "Function requires \"" + symbolTable.getReturnType(tempId) + "\" returned \"" + expressionType + "\"");
+                if (expressionType != symbolTable.getReturnType(tempId)) {
+                    semanticError(lineNumber, "Function requires \"" + symbolTable.getReturnType(tempId) + "\" returned \"" + expressionType + "\"");
+                }
             }
             while (!SAS.empty()) SAS.pop();
         }
@@ -2531,7 +2536,7 @@ public:
     }
     
     bool isLValue(int sid) {
-        return symbolTable.getKind(sid) == "ivar" || symbolTable.getKind(sid) == "lvar";
+        return symbolTable.getKind(sid) == "ivar" || symbolTable.getKind(sid) == "lvar" || symbolTable.getKind(sid) == "param";
     }
     
     void semanticAnalysis() {
