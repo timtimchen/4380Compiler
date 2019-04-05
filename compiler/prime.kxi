@@ -1,0 +1,60 @@
+class Prime {
+
+	private int max;
+	public int total = 0;
+	public int result[];
+	
+	Prime(int n) {
+		max = n;
+		result = new int[n];
+	}
+	
+	private bool isPrime(int num) {
+		int i = 2;
+		while (i * i <= num) {
+			if (num / i * i == num) {
+				return false;
+			}
+			i = i + 1;
+		}
+		return true;
+	}
+	
+	public void calculate() {
+		int i = 2;
+		while (i <= max) {
+			if (isPrime(i)) {
+				result[total] = i;
+				total = total + 1;
+			}
+			i = i + 1;
+		}
+	}
+	
+	public int input() {
+		int number;
+		cout << 'i';
+		cout << 'n';
+		cout << 'p';
+		cout << 'u';
+		cout << 't';
+		cout << ':';
+		cin >> number;
+		return number;
+	}
+}
+
+void kxi2019 main() {
+	Prime obj;
+	int x = obj.input();
+	int temp;
+	obj = new Prime(x);  //vm memory size 1000000, input a number more than 248050 would make an overflow
+	obj.calculate();
+	
+	temp = obj.total - 1;
+	while (temp >= 0) {
+		cout << obj.result[temp];
+		cout << '\n';
+		temp = temp - 1;
+	}
+}

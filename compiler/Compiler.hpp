@@ -573,7 +573,13 @@ public:
         else if (scanner.getToken().lexeme == "while") {
             scanner.fetchTokens();
             if (scanner.getToken().lexeme == "(") {
-                if (flagOfPass) sa_oPush(scanner.getToken());
+                if (flagOfPass) {
+                    int labelCnt = symbolTable.getNewLabelCount();
+                    labelBEGIN = "BEGIN" + std::to_string(labelCnt);
+                    labelENDWHILE = "ENDWHILE" + std::to_string(labelCnt);
+                    symbolTable.iCodeLabel(labelBEGIN);
+                    sa_oPush(scanner.getToken());
+                }
                 scanner.fetchTokens();
             }
             else {
@@ -582,10 +588,6 @@ public:
             expression(scanner);
             if (scanner.getToken().lexeme == ")") {
                 if (flagOfPass) {
-                    int labelCnt = symbolTable.getNewLabelCount();
-                    labelBEGIN = "BEGIN" + std::to_string(labelCnt);
-                    labelENDWHILE = "ENDWHILE" + std::to_string(labelCnt);
-                    symbolTable.iCodeLabel(labelBEGIN);
                     sa_ClosingParenthesis();
                     sa_while(labelENDWHILE);
                 }
@@ -1626,14 +1628,21 @@ public:
                     semanticError(0, "Unexpected Error on sa_return");
                 }
             }
-            std::string expressionType;
+            std::string expressionType, symIdStr;
             if (SAS.empty()) {
                 expressionType = "void";
                 symbolTable.iCode(lineNumber, RTN, "", "", "", "");
             }
             else {
-                expressionType = symbolTable.getType(SAS.top().symID);
-                symbolTable.iCode(lineNumber, RETURN, symbolTable.getSymID(SAS.top().symID), "", "", "");
+                if (SAS.top().value == "this") {
+                    symIdStr = "this";
+                    expressionType = currentClass.substr(1);
+                }
+                else {
+                    symIdStr = symbolTable.getSymID(SAS.top().symID);
+                    expressionType = symbolTable.getType(SAS.top().symID);
+                }
+                symbolTable.iCode(lineNumber, RETURN, symIdStr, "", "", "");
             }
             if (expressionType != symbolTable.getReturnType(tempId)) {
                 semanticError(lineNumber, "Function requires \"" + symbolTable.getReturnType(tempId) + "\" returned \"" + expressionType + "\"");
@@ -2328,7 +2337,7 @@ public:
             exp1 = SAS.top();
             SAS.pop();
         }
-        if (symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
+        if (symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID) || symbolTable.getType(exp1.symID) == "null" || symbolTable.getType(exp2.symID) == "null") {
             OpStack.pop();
             int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
             methodOffset += 4;
@@ -2501,7 +2510,7 @@ public:
             exp1 = SAS.top();
             SAS.pop();
         }
-        if (symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID)) {
+        if (symbolTable.getType(exp2.symID) == symbolTable.getType(exp1.symID) || symbolTable.getType(exp1.symID) == "null" || symbolTable.getType(exp2.symID) == "null") {
             OpStack.pop();
             int tempId = symbolTable.insert("g" + currentClass + currentMethod, "T", "", "tvar", "bool", "", "", "private", methodOffset);
             methodOffset += 4;

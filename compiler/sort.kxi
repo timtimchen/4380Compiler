@@ -1,0 +1,98 @@
+class CharArr {
+	public int total = 0;
+	public char arr[];
+	
+	public void addChar(char c) {
+		char tempArr[];
+		int i = 0;
+		total = total + 1;
+		tempArr = new char[total];
+		while (i < total - 1) {
+			tempArr[i] = arr[i];
+			i = i + 1;
+		}
+		tempArr[total - 1] = c;
+		arr = tempArr;
+	}
+	
+	public void print() {
+		int i = 0;
+		while (i < total) {
+			cout << arr[i];
+			cout << ' ';
+			i = i + 1;
+		}
+		cout << '\n';
+	}
+		
+	public void input() {
+		char newChar;
+		cout << 'i';
+		cout << 'n';
+		cout << 'p';
+		cout << 'u';
+		cout << 't';
+		cout << ':';
+		cin >> newChar;
+		while (newChar != '\n') {
+			addChar(newChar);
+			cin >> newChar;
+		}
+	}
+}
+
+class Sort {
+	public void mergeSort(char ar[], int length) {
+		int len1 = length / 2;
+		int len2 = length - len1;
+		char ar1[];
+		char ar2[];
+		int index = 0;
+		int i1 = 0;
+		int i2 = 0;
+		if (length > 1) {
+			ar1 = new char[len1];
+			ar2 = new char[len2];
+			while (index < len1) {
+				ar1[index] = ar[index];
+				index = index + 1;
+			}
+			while (index < length) {
+				ar2[index - len1] = ar[index];
+				index = index + 1;
+			}
+			mergeSort(ar1, len1);
+			mergeSort(ar2, len2);
+			// merge back
+			index = 0;
+			while (i1 + i2 < length) {
+				if (i1 >= len1) {
+					ar[i1 + i2] = ar2[i2];
+					i2 = i2 + 1;
+				}
+				else if (i2 >= len2) {
+					ar[i1 + i2] = ar1[i1];
+					i1 = i1 + 1;
+				}
+				else {
+					if (ar1[i1] < ar2[i2]) {
+						ar[i1 + i2] = ar1[i1];
+						i1 = i1 + 1;
+					}
+					else {
+						ar[i1 + i2] = ar2[i2];
+						i2 = i2 + 1;
+					}
+				}
+			}
+		}
+	}
+}
+
+void kxi2019 main() {
+	CharArr obj = new CharArr();
+	Sort s;
+	obj.input();
+	s.mergeSort( obj.arr, obj.total );
+	obj.print();
+}

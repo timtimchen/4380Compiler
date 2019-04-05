@@ -453,6 +453,10 @@ public:
             tCode.push_back(label + "\t\tLDR\t\t" + regName + ", FALSE0");
             return;
         }
+        else if (getValue(symId) == "null") {
+            tCode.push_back(label + "\t\tSUB\t\t" + regName + ", " + regName);
+            return;
+        }
         else if (getKind(symId) == "ivar") {
             tCode.push_back(label + "\t\tMOV\t\tR0, FP");
             tCode.push_back("\t\t\t\tADI\t\tR0, -8");
@@ -581,25 +585,63 @@ public:
                 case MUL:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tMUL\t\tR1, R2");
+                    storeDataCode(quad[i].operand3, "R1");
+
                 }
                     break;
                 case DIV:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tDIV\t\tR1, R2");
+                    storeDataCode(quad[i].operand3, "R1");
+
                 }
                     break;
                 case LT:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tCMP\t\tR1, R2");
+                    int labelCnt = getNewLabelCount();
+                    std::string labelSKIPIF = "SKIPIF" + std::to_string(labelCnt);
+                    std::string labelSKIPELSE = "SKIPELSE" + std::to_string(labelCnt);
+                    tCode.push_back("\t\t\t\tBLT\t\tR1, " + labelSKIPIF);
+                    tCode.push_back("\t\t\t\tLDR\t\tR3, FALSE0");
+                    tCode.push_back("\t\t\t\tJMP\t\t" + labelSKIPELSE);
+                    tCode.push_back(labelSKIPIF + "\t\tLDR\t\tR3, TRUE1");
+                    tCode.push_back(labelSKIPELSE + "\t\tMOV\t\tR1, R3");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case GT:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tCMP\t\tR1, R2");
+                    int labelCnt = getNewLabelCount();
+                    std::string labelSKIPIF = "SKIPIF" + std::to_string(labelCnt);
+                    std::string labelSKIPELSE = "SKIPELSE" + std::to_string(labelCnt);
+                    tCode.push_back("\t\t\t\tBGT\t\tR1, " + labelSKIPIF);
+                    tCode.push_back("\t\t\t\tLDR\t\tR3, FALSE0");
+                    tCode.push_back("\t\t\t\tJMP\t\t" + labelSKIPELSE);
+                    tCode.push_back(labelSKIPIF + "\t\tLDR\t\tR3, TRUE1");
+                    tCode.push_back(labelSKIPELSE + "\t\tMOV\t\tR1, R3");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case NE:
@@ -643,19 +685,50 @@ public:
                 case LE:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tCMP\t\tR1, R2");
+                    int labelCnt = getNewLabelCount();
+                    std::string labelSKIPIF = "SKIPIF" + std::to_string(labelCnt);
+                    std::string labelSKIPELSE = "SKIPELSE" + std::to_string(labelCnt);
+                    tCode.push_back("\t\t\t\tBGT\t\tR1, " + labelSKIPIF);
+                    tCode.push_back("\t\t\t\tLDR\t\tR3, TRUE1");
+                    tCode.push_back("\t\t\t\tJMP\t\t" + labelSKIPELSE);
+                    tCode.push_back(labelSKIPIF + "\t\tLDR\t\tR3, FALSE0");
+                    tCode.push_back(labelSKIPELSE + "\t\tMOV\t\tR1, R3");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case GE:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tCMP\t\tR1, R2");
+                    int labelCnt = getNewLabelCount();
+                    std::string labelSKIPIF = "SKIPIF" + std::to_string(labelCnt);
+                    std::string labelSKIPELSE = "SKIPELSE" + std::to_string(labelCnt);
+                    tCode.push_back("\t\t\t\tBLT\t\tR1, " + labelSKIPIF);
+                    tCode.push_back("\t\t\t\tLDR\t\tR3, TRUE1");
+                    tCode.push_back("\t\t\t\tJMP\t\t" + labelSKIPELSE);
+                    tCode.push_back(labelSKIPIF + "\t\tLDR\t\tR3, FALSE0");
+                    tCode.push_back(labelSKIPELSE + "\t\tMOV\t\tR1, R3");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case AND:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R1", tempLabel);
+                    loadDataCode(quad[i].operand2, "R2", "\t\t");
+                    tCode.push_back("\t\t\t\tAND\t\tR1, R2");
+                    storeDataCode(quad[i].operand3, "R1");
                 }
                     break;
                 case OR:
@@ -844,7 +917,9 @@ public:
                 case NEWI:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    tCode.push_back("\t\t\t\tMOV\t\tR5, SL");
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    tCode.push_back(tempLabel + "\t\tMOV\t\tR5, SL");
                     tCode.push_back("\t\t\t\tADI\t\tR5, " + quad[i].operand1);
                     tCode.push_back("\t\t\t\tMOV\t\tR6, R5");
                     // Test for overflow
@@ -859,7 +934,19 @@ public:
                 case NEW:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand1, "R7", tempLabel);
+                    tCode.push_back("\t\t\t\tMOV\t\tR5, SL");
+                    tCode.push_back("\t\t\t\tADD\t\tR5, R7");
+                    tCode.push_back("\t\t\t\tMOV\t\tR6, R5");
+                    // Test for overflow
+                    tCode.push_back("\t\t\t\tCMP\t\tR5, SP");
+                    tCode.push_back("\t\t\t\tBGT\t\tR5, OVERFLOW");
+                    // return the allocated address and renew SL
+                    tCode.push_back("\t\t\t\tMOV\t\tR5, SL");
+                    tCode.push_back("\t\t\t\tMOV\t\tSL, R6");
+                    storeDataCode(quad[i].operand2, "R5");
                 }
                     break;
                 case MOV:
@@ -913,7 +1000,10 @@ public:
                 case RDC:
                 {
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    tCode.push_back(tempLabel +"\t\tTRP\t\t4");
+                    storeDataCode(quad[i].operand1, "R3");
                 }
                     break;
                 case RDI:
@@ -948,8 +1038,25 @@ public:
                     break;
                 case AEF:
                 {
+                    int tId = std::stoi(quad[i].operand3.substr(1));
                     tCode.push_back(";" + printICode(quad[i]));
-                    
+                    std::string tempLabel = "\t\t";
+                    if (quad[i].label != "") tempLabel = quad[i].label;
+                    loadDataCode(quad[i].operand2, "R2", tempLabel);
+                    loadDataCode(quad[i].operand1, "R1", "\t\t");
+                    tCode.push_back("\t\t\t\tSUB\t\tR7, R7");
+                    if (getType(tId) == "char") {
+                        tCode.push_back("\t\t\t\tADI\t\tR7, 1");
+                    }
+                    else {
+                        tCode.push_back("\t\t\t\tADI\t\tR7, 4");
+                    }
+                    tCode.push_back("\t\t\t\tMUL\t\tR2, R7");
+                    tCode.push_back("\t\t\t\tADD\t\tR1, R2");
+                    // store the address on R1 to a Reference variable
+                    tCode.push_back("\t\t\t\tMOV\t\tR0, FP");
+                    tCode.push_back("\t\t\t\tADI\t\tR0, -" + std::to_string(getOffset(tId)));
+                    tCode.push_back("\t\t\t\tSTR\t\tR1, R0");
                 }
                     break;
                 case STOP:
