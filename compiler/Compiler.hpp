@@ -551,7 +551,7 @@ public:
                     int labelCnt = symbolTable.getNewLabelCount();
                     labelENDIF = "SKIPIF" + std::to_string(labelCnt);
                     labelSKIPELSE = "SKIPELSE" + std::to_string(labelCnt);
-                    sa_if(labelENDIF);
+                    sa_if(labelENDIF, scanner.getToken().lineNumber);
                 }
                 scanner.fetchTokens();
             }
@@ -589,7 +589,7 @@ public:
             if (scanner.getToken().lexeme == ")") {
                 if (flagOfPass) {
                     sa_ClosingParenthesis();
-                    sa_while(labelENDWHILE);
+                    sa_while(labelENDWHILE, scanner.getToken().lineNumber);
                 }
                 scanner.fetchTokens();
             }
@@ -1161,9 +1161,7 @@ public:
     }
     
     void sa_oPush(Token token) {
-        if (token.lexeme == "=" && !OpStack.empty())
-            semanticError(token.lineNumber, "Assignment operation error");
-        else if (token.lexeme == "(" || token.lexeme == "[") {
+        if (token.lexeme == "(" || token.lexeme == "[") {
             OpRec newOpRec = {token.lexeme, operatorTable[token.lexeme]};
             OpStack.push(newOpRec);
         }
@@ -1277,6 +1275,20 @@ public:
                 if (tempId != 0) break;
                 currentPath = currentPath.substr(0, currentPath.find_last_of('.'));
             }
+            std::vector<std::string> paramList;
+            std::string topSARparam = topSAR.value.substr(topSAR.value.find_first_of('('));
+            std::string topSARsignature = topSAR.value.substr(0, topSAR.value.find_first_of('('));
+            if (topSARparam.size() <= 2)
+                topSARsignature += "()";
+            else {
+                paramList = split(topSARparam.substr(1,topSARparam.size() - 2), ',');
+                topSARsignature += "(";
+                for (int i = 0; i < paramList.size(); i++) {
+                    topSARsignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
+                    topSARsignature += ",";
+                }
+                topSARsignature[topSARsignature.size() - 1] = ')';
+            }
             if (tempId != 0 && symbolTable.getKind(tempId) == "method") {
                 std::string funcSignature = symbolTable.getValue(tempId);
                 std::string paramStr = symbolTable.getParam(tempId);
@@ -1290,20 +1302,6 @@ public:
                         funcSignature += ",";
                     }
                     funcSignature[funcSignature.size() - 1] = ')';
-                }
-                std::vector<std::string> paramList;
-                std::string topSARparam = topSAR.value.substr(topSAR.value.find_first_of('('));
-                std::string topSARsignature = topSAR.value.substr(0, topSAR.value.find_first_of('('));
-                if (topSARparam.size() <= 2)
-                    topSARsignature += "()";
-                else {
-                    paramList = split(topSARparam.substr(1,topSARparam.size() - 2), ',');
-                    topSARsignature += "(";
-                    for (int i = 0; i < paramList.size(); i++) {
-                        topSARsignature += symbolTable.getType(stoi(paramList[i].substr(1, paramList[i].size() - 1)));
-                        topSARsignature += ",";
-                    }
-                    topSARsignature[topSARsignature.size() - 1] = ')';
                 }
 
                 if (topSARsignature != funcSignature) {
@@ -1327,7 +1325,7 @@ public:
                 }
             }
             else {
-                semanticError(SAS.top().lineNumber, "Function \"" + SAS.top().value + "\" not defined");
+                semanticError(SAS.top().lineNumber, "Function \"" + topSARsignature + "\" not defined");
             }
         }
         else if (SAS.top().reference == "arr_sar") {
@@ -1561,8 +1559,10 @@ public:
         SAS.push(newSAR);
     }
     
-    void sa_if(std::string label) {
-        if (SAS.empty()) unexpectedError("Unexpected Error: SAS empty in sa_if()");
+    void sa_if(std::string label, int line) {
+        if (SAS.empty()){
+            semanticError(line, "'if' requires 'bool' got \'" "\'");
+        }
         if (symbolTable.getType(SAS.top().symID) == "bool") {
             symbolTable.iCode(SAS.top().lineNumber, BF, symbolTable.getSymID(SAS.top().symID), label, "", "");
             SAS.pop();
@@ -1571,8 +1571,10 @@ public:
             semanticError(SAS.top().lineNumber, "'if' requires 'bool' got \'" + symbolTable.getType(SAS.top().symID) + "\'");
     }
     
-    void sa_while(std::string label) {
-        if (SAS.empty()) unexpectedError("Unexpected Error: SAS empty in sa_while()");
+    void sa_while(std::string label, int line) {
+        if (SAS.empty()) {
+            semanticError(SAS.top().lineNumber, "'while' requires 'bool' got \' \'");
+        }
         if (symbolTable.getType(SAS.top().symID) == "bool") {
             symbolTable.iCode(SAS.top().lineNumber, BF, symbolTable.getSymID(SAS.top().symID), label, "", "");
             SAS.pop();

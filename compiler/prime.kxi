@@ -46,9 +46,9 @@ class Prime {
 
 void kxi2019 main() {
 	Prime obj;
-	int x = obj.input();
+	int x = obj.input();  //vm memory size 1000000, input a number more than 248050 would make an overflow
 	int temp;
-	obj = new Prime(x);  //vm memory size 1000000, input a number more than 248050 would make an overflow
+	obj = new Prime(x);
 	obj.calculate();
 	
 	temp = obj.total - 1;

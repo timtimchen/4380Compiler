@@ -83,7 +83,7 @@ class Mouse {
 }
 
 void kxi2019 main() {
-	int x;	
+	int x = y + 6;	
 	int y;
 	int g;
 	int f;
